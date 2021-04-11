@@ -3,7 +3,7 @@ This package investigates the change in temperature in Antarctic ice and the unc
 
 Installation: 
 ```
-pip install 
+pip install git+https://github.com/phys201/icetemp.git 
 ```
 
 For: Data Analysis for Physicists (PHYS 201), Spring 2021, Harvard University. 
