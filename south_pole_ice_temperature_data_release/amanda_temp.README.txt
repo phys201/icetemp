@@ -1,0 +1,4 @@
+What is in the file amanda.txt:
+COLUMN	CONTAINS
+1	temperature (C)
+2	depth of temperature sensor (m)

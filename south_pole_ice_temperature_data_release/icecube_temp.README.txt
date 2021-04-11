@@ -1,0 +1,5 @@
+What is in the file icecube.YYYY.txt:
+YYYY indicates the year when data was readout.
+COLUMN	CONTAINS
+1	temperature (C)
+2	depth of nearest DOM (m)
