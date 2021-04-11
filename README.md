@@ -6,9 +6,10 @@ Installation:
 pip install git+https://github.com/phys201/icetemp.git 
 ```
 
-For: Data Analysis for Physicists (PHYS 201), Spring 2021, Harvard University. 
+Data Analysis for Physicists (PHYS 201), Spring 2021, Harvard University. 
 
 Authors: Diyaselis Delgado, Alexis Mulski, and Josh Villareal.
+
 License: GNU General Public License v3
 
 This package uses `numpy` and `pandas`.
