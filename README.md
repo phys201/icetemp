@@ -1,14 +1,14 @@
 # icetemp
-This package investigates the change in temperature in Artarctic ice and the uncertainty on that estimate.
+This package investigates the change in temperature in Antarctic ice and the uncertainty on that estimate.
 
 Installation: 
 ```
-pip install icetemp
+pip install 
 ```
 
-For: Data Analysis for Physicists (PHYS 201), Spring 2020, Harvard University. 
+For: Data Analysis for Physicists (PHYS 201), Spring 2021, Harvard University. 
 
 Authors: Diyaselis Delgado, Alexis Mulski, and Josh Villareal.
 License: GNU General Public License v3
 
-This package uses the numpy package.
+This package uses `numpy` and `pandas`.
