@@ -4,9 +4,9 @@ import os
 import pandas as pd
 
 # load data in an os-independent way
-def load_ice_data(filename, data_year, temp_errors, depth_errors, data_dir='south_pole_ice_temperature_data_release'):
+def load_ice_data(filename, temp_errors, depth_errors, data_dir='south_pole_ice_temperature_data_release'):
     '''
-    Returns data contained in <filename>.txt as a Pandas dataframe including the year the data was taken and the errors on temp & depth 
+    Returns data contained in filename (.txt extension included) as a Pandas dataframe including the year the data was taken and the errors on temp & depth 
 
     '''
     
@@ -20,9 +20,10 @@ def load_ice_data(filename, data_year, temp_errors, depth_errors, data_dir='sout
     # for testing
     print(data_path)
     
+
     col_names = ["Temperature", "Depth"]
     raw_data = pd.read_csv(data_path, sep=' ')
     # add metadata
     # data_metadata = 
 
-    return data #_metadata
+    return raw_data #_metadata
