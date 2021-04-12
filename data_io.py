@@ -17,11 +17,7 @@ def load_ice_data(filename, temp_errors, depth_errors, data_dir='south_pole_ice_
     data_dir = os.path.join(start_dir, data_dir)
     data_path = os.path.join(start_dir, data_dir, filename)
 
-    # for testing
-    print(data_path)
-    
-
-    col_names = ["Temperature", "Depth"]
+    #col_names = ["Temperature", "Depth"]
     raw_data = pd.read_csv(data_path, sep=' ')
     # add metadata
     # data_metadata = 
