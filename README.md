@@ -11,6 +11,6 @@ ___
 
 ### Data Analysis for Physicists (PHYS 201), Spring 2021, Harvard University. 
 
-Authors: Diyaselis Delgado, Alexis Mulski, and Josh Villareal.
+Authors: Diyaselis Delgado, Alexis Mulski, and Josh Villarreal.
 
 License: GNU General Public License v3
