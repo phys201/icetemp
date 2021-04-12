@@ -1,5 +1,6 @@
 # model.py
 # contains functions to calculate the likelihood based on a linear and quadratic model given data and parameters
+import numpy as np
 
 def calc_linear_likelihood(data, m, b):
     # model: temp = slope*depth + intercept
