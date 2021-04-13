@@ -8,4 +8,6 @@ setup(name='icetemp',
       author_email='alexismulski@g.harvard.edu, ddelgado@g.harvard.edu, joshuavillarreal@college.harvard.edu',
       license='GPLv3',
       packages=['icetemp'],
-      install_requires=['numpy', 'pandas'])
+      install_requires=['numpy', 'pandas'],
+	  test_suite='nose.collector',
+	  tests_require=['nose'])

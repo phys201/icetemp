@@ -16,11 +16,7 @@ def load_ice_data(filename, data_year, temp_errors, depth_errors, data_dir='sout
     start_dir = os.path.dirname(start)
     data_dir = os.path.join(start_dir, data_dir)
     data_path = os.path.join(start_dir, data_dir, filename)
-
-	print('start', start_dir)
-	print('data', data_dir)
-	print('data path', data_path)
-
+    
     # create pandas DataFrame object from our data
     data = pd.read_csv(data_path, header=None, sep=' |\t', names = ["Temperature", "Depth"], engine='python')
     # specifying the engine prevents a warning message, since we are using regex separators
