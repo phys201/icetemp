@@ -1,2 +1,2 @@
-from data_io import *
-from model import *
+from .data_io import *
+from .model import *
