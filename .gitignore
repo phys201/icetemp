@@ -10,3 +10,7 @@
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
 /*.egg
+.ipynb_checkpoints/tutorial-checkpoint.ipynb
+.ipynb_checkpoints/tutorial-checkpoint.ipynb
+icetemp/south_pole_ice_temperature_data_release/.DS_Store
+.ipynb_checkpoints/tutorial-checkpoint.ipynb
