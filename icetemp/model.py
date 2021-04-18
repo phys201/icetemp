@@ -3,7 +3,23 @@
 import numpy as np
 
 def calc_linear_likelihood(data, m, b):
-    # model: temp = slope*depth + intercept
+    """
+    Calculates the likelihood based on a linear model given the data and parameters (m, b)
+    model: temp = slope*depth + intercept
+
+    Parameters
+    ----------
+    data : pandas DataFrame
+        data and metadata contained in pandas DataFrame
+        Format described in tutotial notebook
+    m, b : floats
+        parameter values used in calculation of likelihood 
+    
+    Returns
+    -------
+    likelihood : double
+        The likelihood for a linear model given the data and specified parameters 
+    """
     
     # prepare data
     depth = data['Depth'].values
@@ -14,7 +30,23 @@ def calc_linear_likelihood(data, m, b):
 
 
 def calc_quad_likelihood(data, q, m, b):
-    # model: temp = q*depth^2 + m*depth + b
+    """
+    Calculates the likelihood based on a quadratic model given the data and parameters (m, b)
+    model: temp = q*depth^2 + m*depth + b
+
+    Parameters
+    ----------
+    data : pandas DataFrame
+        data and metadata contained in pandas DataFrame
+        Format described in tutotial notebook
+    q, m, b : floats
+        parameter values used in calculation of likelihood 
+    
+    Returns
+    -------
+    likelihood : double
+        The likelihood for a quadratic model given the data and specified parameters 
+    """
     
     # prepare data
     depth = data['Depth'].values

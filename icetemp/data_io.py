@@ -5,10 +5,30 @@ import pandas as pd
 
 # load data in an os-independent way
 def load_ice_data(filename, data_year, temp_errors, depth_errors, data_dir='south_pole_ice_temperature_data_release'):
-    '''
-    Returns data contained in filename (.txt extension included) as a Pandas dataframe including the year the data was taken and the errors on temp & depth 
+    """
+    Given a filename, create a pandas DataFrame object containing data and other metadata specified when calling function
 
-    '''
+    Parameters
+    ----------
+    filename : string
+        string containing name of file containing data INCLUDING extention
+        EX <filename>.txt
+    data_year : int
+        year in which data was taken
+    temp_errors : float
+        error on temperature measurements (constant across all data points)
+    depth_errors : float
+        error on depth measurements (constant across all data points)
+    data_dir : string
+        string that specifies directory in which data lives in relation to top directory
+
+    Returns
+    -------
+    data : pandas DataFrame
+        pandas DataFrame containing data and metadata
+        
+    """
+
 
     # default: data located in south_pole_ice_temperature_data_release directory
     # need to navigate there 
