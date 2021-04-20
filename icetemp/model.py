@@ -79,11 +79,11 @@ def fit_quad(data):
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
-    sigma_y = data['temp_error'].values
+    sigma_y = data['temp_errors'].values
 
     # define quantities from HBL equation 2, 3, and 4
     Y = temp
-    A = depth[:, np.newaxis] ** (0, 1)
+    A = depth[:, np.newaxis] ** (0, 1, 2)
     C = np.diag(sigma_y ** 2)
 
 
