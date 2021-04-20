@@ -16,13 +16,13 @@ def calc_linear_likelihood(data, m, b):
         Format described in tutotial notebook
     m, b : floats
         parameter values used in calculation of likelihood 
-    
+
     Returns
     -------
     likelihood : double
         The likelihood for a linear model given the data and specified parameters 
     """
-    
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
@@ -43,13 +43,13 @@ def calc_quad_likelihood(data, q, m, b):
         Format described in tutotial notebook
     q, m, b : floats
         parameter values used in calculation of likelihood 
-    
+
     Returns
     -------
     likelihood : double
         The likelihood for a quadratic model given the data and specified parameters 
     """
-    
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
@@ -95,51 +95,53 @@ def fit_quad(data):
     return params, cov
 
 
-def fit_quad_MCMC(data):
+def fit_quad_MCMC(data, init_guess):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
     model: temp = q*depth^2 + m*depth + b
+    Plots the traces in the MCMC
 
     Parameters
     ----------
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
         Format described in tutotial notebook
+    init_guess : dict
+        dictionary containing initial values for each of the parameters in the model
 
     Returns
     -------
-    q, m, b (1D array of parameters), covariance matrix (3x3 matrix) : floats
-        parameter values from quadratic model, covariance matrix
+    b, m, q (1D array of parameters) : floats
+        parameter values from the model 
 
     """
-    
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
     sigma_y = data['temp_errors'].values
 
-    # initial guess
-    initial_guess = {'m':0.00, 'b':0.00, 'q':0.00}
-    
     with pm.Model() as quad_model:
-        # define quadratic model
-        q = pm.Flat('q')
-        m = pm.Flat('m')
-        b = pm.Flat('b')
+        # define priors for each parameter in the quadratic fit
+        m = pm.Uniform('m', -100, 100)
+        b = pm.Uniform('b', -100, 100)
+        q = pm.Uniform('q', -100, 100)
         line = q * depth**2 + m * depth + b
 
         # define likelihood
-        likelihood = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
+        likelihood = pm.Normal("temp_pred", mu = line, sd = 0.1, observed=temp)
 
         # unleash the inference
-        n_tuning_steps = 2500
-        ndraws = 1000
-        traces = pm.sample(tune=n_tuning_steps, draws=ndraws, chains=1)
+        n_tuning_steps = 1000
+        ndraws = 2500
+        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=2) # need at least two chains to use following arviz function
         az.plot_trace(traces)
+        display(az.summary(traces, round_to=9))
 
-        #params = pm.find_MAP(model=quad_model, start = initial_guess, return_raw=True)
-        #covariance_matrix = np.flip(scipy_output.hess_inv.todense()/uncertainty)
+        # extract parameters using arviz
+        q = az.summary(traces, round_to=9)['mean']['q']
+        m = az.summary(traces, round_to=9)['mean']['m']
+        b = az.summary(traces, round_to=9)['mean']['b']
 
-
-    return 0, 0#params, cov_mat
+    return b, m, q
