@@ -1,6 +1,8 @@
 # model.py
 # contains functions to calculate the likelihood based on a linear and quadratic model given data and parameters
 import numpy as np
+import pymc3 as pm
+import arviz as az
 
 def calc_linear_likelihood(data, m, b):
     """
@@ -93,7 +95,7 @@ def fit_quad(data):
     return params, cov
 
 
-def fit_quad_temp_uncert(data):
+def fit_quad_MCMC(data):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
@@ -107,8 +109,37 @@ def fit_quad_temp_uncert(data):
 
     Returns
     -------
-    q, m, b : floats
-        parameter values from quadratic models
+    q, m, b (1D array of parameters), covariance matrix (3x3 matrix) : floats
+        parameter values from quadratic model, covariance matrix
 
     """
-    return 0
+    
+    # prepare data
+    depth = data['Depth'].values
+    temp = data['Temperature'].values
+    sigma_y = data['temp_errors'].values
+
+    # initial guess
+    initial_guess = {'m':0.00, 'b':0.00, 'q':0.00}
+
+    with pm.Model() as quad_model:
+        # define quadratic model
+        q = pm.Flat('q')
+        m = pm.Flat('m')
+        b = pm.Flat('b')
+        line = q**2 * depth + m * depth + b
+
+        # define likelihood
+        likelihood = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
+
+        # unleash the inference
+        n_tuning_steps = 2500
+        ndraws = 500
+        traces = pm.sample(tune=n_tuning_steps, draws=ndraws, chains=1)
+        az.plot_trace(trace)
+
+        #params = pm.find_MAP(model=quad_model, start = initial_guess, return_raw=True)
+        #covariance_matrix = np.flip(scipy_output.hess_inv.todense()/uncertainty)
+
+
+    return 0, 0#params, cov_mat
