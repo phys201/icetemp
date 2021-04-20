@@ -121,20 +121,21 @@ def fit_quad_MCMC(data):
 
     # initial guess
     initial_guess = {'m':0.00, 'b':0.00, 'q':0.00}
+    print("test") #FIXME: remove this
     
     with pm.Model() as quad_model:
         # define quadratic model
         q = pm.Flat('q')
         m = pm.Flat('m')
         b = pm.Flat('b')
-        line = q * depth**2 + m * depth + b
+        line = q**2 * depth + m * depth + b
 
         # define likelihood
         likelihood = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
         # unleash the inference
         n_tuning_steps = 2500
-        ndraws = 1000
+        ndraws = 500
         traces = pm.sample(tune=n_tuning_steps, draws=ndraws, chains=1)
         az.plot_trace(traces)
 
