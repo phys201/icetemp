@@ -137,7 +137,6 @@ def fit_quad_MCMC(data, init_guess):
         ndraws = 2500
         traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=2) # need at least two chains to use following arviz function
         az.plot_trace(traces)
-        display(az.summary(traces, round_to=9))
 
         # extract parameters using arviz
         q = az.summary(traces, round_to=9)['mean']['q']
