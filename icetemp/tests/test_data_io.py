@@ -1,7 +1,8 @@
 # unit testing for data_io
 from unittest import TestCase
-
+import numpy as np
 import pandas as pd
+
 import icetemp.data_io as di
 
 # arbitrary column entries for testing
@@ -59,3 +60,17 @@ class TestDataIO(TestCase):
 		self.assertTrue(quad_df['temp_errors'].values[0] == temp_error)
 		self.assertTrue(line_df['depth_errors'].values[0] == depth_error)
 		self.assertTrue(quad_df['depth_errors'].values[0] == depth_error)
+
+	def test_nans(self):
+		'''
+		Makes sure that there aren't any NaN entries in the dataframe
+		'''
+		self.assertTrue(line_df.isna().sum().sum() == 0)
+		self.assertTrue(quad_df.isna().sum().sum() == 0)
+
+	def test_depth_positive(self):
+		'''
+		Makes sure that all of the depth entries end up positive
+		'''
+		self.assertTrue(not np.any(line_df['Depth'].values < 0))
+		self.assertTrue(not np.any(quad_df['Depth'].values < 0))

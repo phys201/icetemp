@@ -48,14 +48,4 @@ class TestModel(TestCase):
 		self.assertTrue(np.abs(params[1] - m) < 1e-3)
 		self.assertTrue(np.abs(params[2] - q) < 1e-3)
 
-	def test_quadratic_MCMC_fit(self):
-		'''
-		Tests MCMC quadratic regression result on dummy data
-		'''
-		init_guess = {'b':0.00, 'm':0.00, 'q':0.00}
-		params = mod.fit_quad_MCMC(quad_fit_test_df, init_guess) # returns params in order b, m, q
-		self.assertTrue(np.abs(params[0] - b) < 1e-1)
-		self.assertTrue(np.abs(params[1] - m) < 1e-1)
-		self.assertTrue(np.abs(params[2] - q) < 1e-1)
-
 

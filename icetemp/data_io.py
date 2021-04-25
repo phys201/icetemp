@@ -1,6 +1,7 @@
 # data_io.py
 # modeled on https://github.com/phys201/example/blob/main/example/data_io.py
 import os
+import numpy as np
 import pandas as pd
 
 # load data in an os-independent way
@@ -28,8 +29,6 @@ def load_ice_data(filename, data_year, temp_errors, depth_errors, data_dir='sout
         pandas DataFrame containing data and metadata
         
     """
-
-
     # default: data located in south_pole_ice_temperature_data_release directory
     # need to navigate there 
     start = os.path.abspath(__file__)
@@ -38,12 +37,15 @@ def load_ice_data(filename, data_year, temp_errors, depth_errors, data_dir='sout
     data_path = os.path.join(start_dir, data_dir, filename)
     
     # create pandas DataFrame object from our data
-    data = pd.read_csv(data_path, header=None, sep=' |\t', names = ["Temperature", "Depth"], engine='python')
+    data = pd.read_csv(data_path, header=None, delim_whitespace=True, names=["Temperature", "Depth"], engine='python')
     # specifying the engine prevents a warning message, since we are using regex separators
+
+    # depths should be positive
+    data['Depth'] = np.abs(data['Depth'].values)
 
     #add metadata
     data['data_year'] = data_year
     data['temp_errors'] = temp_errors 
-    data['depth_errors'] = depth_errors 
+    data['depth_errors'] = depth_errors
 
     return data
