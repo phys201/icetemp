@@ -49,3 +49,28 @@ def load_ice_data(filename, data_year, temp_errors, depth_errors, data_dir='sout
     data['depth_errors'] = depth_errors
 
     return data
+
+# create temperature vs. time data
+def timeify(dfs, years):
+    '''
+    Function that aggregates temperature vs. depth data over a period of years
+
+    Parameters
+    ----------
+    dfs : list of pd.DataFrames
+        each data frame has columns Temperature, Depth, prediction_errors for predicted temperature at a certain depth
+    years : list
+        list of years that each data frame in 'dfs' was collected
+
+    Returns
+    -------
+    timetable: pd.DataFrame
+        concatenated data frame that now incorporates timing information
+    '''
+
+    # append years to each dataframe
+    for y, df in enumerate(dfs):
+        df['year'] = years[y]
+
+    # concatenate dataframes together
+    return pd.concat(dfs)
