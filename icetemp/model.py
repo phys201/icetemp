@@ -130,7 +130,7 @@ def fit_quad_MCMC(data, init_guess):
         line = q * depth**2 + m * depth + b
 
         # define likelihood
-        likelihood = pm.Normal("temp_pred", mu = line, sd = 0.1, observed=temp)
+        likelihood = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
         # unleash the inference
         n_tuning_steps = 1000

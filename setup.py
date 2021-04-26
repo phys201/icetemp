@@ -10,4 +10,4 @@ setup(name='icetemp',
       packages=['icetemp'],
       install_requires=['arviz', 'numpy', 'pandas', 'pymc3'],
       test_suite='nose.collector',
-	tests_require=['nose'])
+      tests_require=['nose'])
