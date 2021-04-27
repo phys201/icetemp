@@ -114,8 +114,9 @@ def fit_quad_MCMC(data, init_guess):
 
     Returns
     -------
-    b, m, q (1D array of parameters) : floats
-        parameter values from the model 
+    params, param_errors: 1D numpy arrays of floats
+        parameter values from the model
+        standard deviations of each parameter
 
     """
     # prepare data
@@ -139,14 +140,16 @@ def fit_quad_MCMC(data, init_guess):
         traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=2) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
-        # extract parameters using arviz
-        q = az.summary(traces, round_to=9)['mean']['q']
-        m = az.summary(traces, round_to=9)['mean']['m']
-        b = az.summary(traces, round_to=9)['mean']['b']
+        # extract parameters and uncertainty using arviz
+        params_list = []
+        params_uncert = []
+        for parameter in ['b', 'm', 'q']:
+            params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
+            params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
         
-        # Output as dataframe
-        # samples = pm.trace_to_dataframe(traces)
-    return b, m, q
+        params = np.array(params_list)
+        param_errors = np.array(params_uncert)
+    return params, param_errors
 
 def fit_GPR(timetable):
     '''

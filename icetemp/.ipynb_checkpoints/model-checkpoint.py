@@ -1,8 +1,10 @@
 # model.py
 # contains functions to calculate the likelihood based on a linear and quadratic model given data and parameters
+import arviz as az
+import matplotlib.pyplot as plt
 import numpy as np
 import pymc3 as pm
-import arviz as az
+import theano.tensor as tt
 
 def calc_linear_likelihood(data, m, b):
     """
@@ -16,13 +18,13 @@ def calc_linear_likelihood(data, m, b):
         Format described in tutotial notebook
     m, b : floats
         parameter values used in calculation of likelihood 
-    
+
     Returns
     -------
     likelihood : double
         The likelihood for a linear model given the data and specified parameters 
     """
-    
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
@@ -43,13 +45,13 @@ def calc_quad_likelihood(data, q, m, b):
         Format described in tutotial notebook
     q, m, b : floats
         parameter values used in calculation of likelihood 
-    
+
     Returns
     -------
     likelihood : double
         The likelihood for a quadratic model given the data and specified parameters 
     """
-    
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
@@ -95,52 +97,121 @@ def fit_quad(data):
     return params, cov
 
 
-def fit_quad_MCMC(data):
+def fit_quad_MCMC(data, init_guess):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
     model: temp = q*depth^2 + m*depth + b
+    Plots the traces in the MCMC
 
     Parameters
     ----------
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
         Format described in tutotial notebook
+    init_guess : dict
+        dictionary containing initial values for each of the parameters in the model
 
     Returns
     -------
-    q, m, b (1D array of parameters), covariance matrix (3x3 matrix) : floats
-        parameter values from quadratic model, covariance matrix
+    params, param_errors: 1D numpy arrays of floats
+        parameter values from the model
+        standard deviations of each parameter
 
     """
-    
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
     sigma_y = data['temp_errors'].values
 
-    # initial guess
-    initial_guess = {'m':0.00, 'b':0.00, 'q':0.00}
-    print("test") #FIXME: remove this
-    
-    with pm.Model() as quad_model:
-        # define quadratic model
-        q = pm.Flat('q')
-        m = pm.Flat('m')
-        b = pm.Flat('b')
-        line = q**2 * depth + m * depth + b
+    with pm.Model() as _:
+        # define priors for each parameter in the quadratic fit
+        m = pm.Uniform('m', -100, 100)
+        b = pm.Uniform('b', -100, 100)
+        q = pm.Uniform('q', -100, 100)
+        line = q * depth**2 + m * depth + b
 
         # define likelihood
-        likelihood = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
+        y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
         # unleash the inference
-        n_tuning_steps = 2500
-        ndraws = 500
-        traces = pm.sample(tune=n_tuning_steps, draws=ndraws, chains=1)
+        n_tuning_steps = 2000
+        ndraws = 2500
+        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=2) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
-        #params = pm.find_MAP(model=quad_model, start = initial_guess, return_raw=True)
-        #covariance_matrix = np.flip(scipy_output.hess_inv.todense()/uncertainty)
+        # extract parameters and uncertainty using arviz
+        params_list = []
+        params_uncert = []
+        for parameter in ['b', 'm', 'q']:
+            params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
+            params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
+        
+        params = np.array(params_list)
+        param_errors = np.array(params_uncert)
+    return params, param_errors
 
+def fit_GPR(timetable):
+    '''
+    Performs a Gaussian Process Regression to infer temperature v. time dependence
 
-    return 0, 0#params, cov_mat
+    Parameters
+    ----------
+    timetable: pandas DataFrame
+        DataFrame of data and metadata for temperatures at a certain depth over a large period of time
+        Incoporates the following columns: year, Temperature, prediction_errors (error on regressions from above)
+
+    Returns
+    -------
+    gpr_model: pymc3 model
+        model that will later allow us to sample and plot the posterior predictive distribution of
+        temperature vs. time
+    '''
+    
+    # data extraction
+    years = timetable['year'].values
+    temps = timetable['Temperature'].values
+    pred_errors = timetable['prediction_errors'].values
+
+    # defining the model and sampling
+    with pm.Model() as gpr_model:
+        # priors on the covariance function hyperparameters
+        l = pm.Uniform('l', 0, 10)
+
+        # uninformative prior on the function variance
+        log_s2_f = pm.Uniform('log_s2_f', lower=-10, upper=5)
+        s2_f = pm.Deterministic('s2_f', tt.exp(log_s2_f))
+
+        # uninformative prior on the noise variance
+        log_s2_n = pm.Uniform('log_s2_n', lower=-10, upper=5)
+        s2_n = pm.Deterministic('s2_n', tt.exp(log_s2_n))
+
+        # covariance functions for the function f and the noise
+        f_cov = s2_f * pm.gp.cov.ExpQuad(1, l)
+
+        # defining observations
+        y_obs = pm.gp.GP('y_obs', cov_func=f_cov, sigma=s2_n, observed={'X': years, 'Y': temps})
+
+        # sampling
+        trace = pm.sample(2000)
+
+    # traceplotting
+    pm.traceplot(trace[1000:], varnames=['l', 's2_f', 's2_n'])
+
+    # compute samples from posterior predictive distribution
+    year_range = np.max(years) - np.min(years)
+    Z = np.linspace(np.min(years) - year_range/0.15, np.max(years) + year_range/0.15, 100)
+    with gpr_model:
+        gp_samples = pm.gp.sample_gp(trace[1000:], y_obs, Z, samples=50, random_seed=42)
+
+    # plottting PPD
+    _, ax = plt.subplots(figsize=(14,5))
+    [ax.plot(Z, x, color=cm(0.3), alpha=0.3) for x in gp_samples]
+    ax.plot(years, temps, 'ok', ms=10)
+    ax.set_xlabel('Time [years]')
+    ax.set_ylabel('Temperature [$^\\circ C$]')
+    ax.set_title('Posterior predictive distribution')
+
+    return gpr_model
+
+    
