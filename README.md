@@ -1,5 +1,5 @@
 # icetemp
-This package investigates the change in temperature in Antarctic ice and the uncertainty on that estimate.
+This package investigates the change in temperature at the surface of the Antarctic ice as a function of time. Data from South Pole neutrino experiments were used to develop the model. 
 
 ## Installation
 ```
