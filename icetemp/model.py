@@ -172,22 +172,17 @@ def fit_GPR(timetable):
 
     # defining the model and sampling
     with pm.Model() as gpr_model:
-        # priors on the covariance function hyperparameters
-        l = pm.Uniform('l', 0, 10)
 
-        # uninformative prior on the function variance
-        log_s2_f = pm.Uniform('log_s2_f', lower=-10, upper=5)
-        s2_f = pm.Deterministic('s2_f', tt.exp(log_s2_f))
-
-        # uninformative prior on the noise variance
-        log_s2_n = pm.Uniform('log_s2_n', lower=-10, upper=5)
-        s2_n = pm.Deterministic('s2_n', tt.exp(log_s2_n))
-
-        # covariance functions for the function f and the noise
-        f_cov = s2_f * pm.gp.cov.ExpQuad(1, l)
-
-        # defining observations
-        y_obs = pm.gp.GP('y_obs', cov_func=f_cov, sigma=s2_n, observed={'X': years, 'Y': temps})
+        l = pm.Uniform("l", 0, 10)
+        eta = pm.HalfCauchy("η", beta=5)
+        
+        cov = eta**2 * pm.gp.cov.ExpQuad(1, l)
+        gp = pm.gp.Latent(cov_func=cov)
+        
+        # the gaussian process prior
+        f = gp.prior("f", X=years)
+        
+        y_obs = pm.Normal("y", mu=f, sd = pred_errors, observed=temps)
 
         # sampling
         trace = pm.sample(2000)
