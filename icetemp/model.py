@@ -134,7 +134,7 @@ def fit_quad_MCMC(data, init_guess):
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
         # unleash the inference
-        n_tuning_steps = 1000
+        n_tuning_steps = 2000
         ndraws = 2500
         traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=2) # need at least two chains to use following arviz function
         az.plot_trace(traces)
@@ -143,7 +143,9 @@ def fit_quad_MCMC(data, init_guess):
         q = az.summary(traces, round_to=9)['mean']['q']
         m = az.summary(traces, round_to=9)['mean']['m']
         b = az.summary(traces, round_to=9)['mean']['b']
-
+        
+        # Output as dataframe
+        # samples = pm.trace_to_dataframe(traces)
     return b, m, q
 
 def fit_GPR(timetable):
