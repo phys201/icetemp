@@ -25,6 +25,11 @@ quad_llh_test_df = pd.DataFrame({'Temperature': quad_temps, 'Depth': depths, 'te
 temp_error_fit = 0.0001
 quad_fit_test_df = pd.DataFrame({'Temperature': quad_temps, 'Depth': depths, 'temp_errors': np.array([temp_error_fit]*test_size)})
 
+# generate timetable for GPR
+timetable_test = pd.DataFrame({'year': [2001, 2005, 2008, 2009], 
+                          'Temperature': [-40., -39.5, -38.2, -37.], 
+                          'prediction_errors': [0.1, 0.1, 0.1, 0.1]})
+
 # object to handle unit testing using nosetests
 class TestModel(TestCase):
 	def test_linear_likelihood(self):
@@ -47,5 +52,15 @@ class TestModel(TestCase):
 		self.assertTrue(np.abs(params[0] - b) < 1e-3)
 		self.assertTrue(np.abs(params[1] - m) < 1e-3)
 		self.assertTrue(np.abs(params[2] - q) < 1e-3)
+
+	def test_gpr_fit_compiles(self):
+		'''
+		Tests whether or not the GPR sampling model actually compiles
+		'''
+		try:
+			gpr = mod.fit_GPR(timetable_test, nosetest=True)
+			self.assertTrue(True)
+		except:
+			self.assertTrue(False)
 
 

@@ -150,7 +150,7 @@ def fit_quad_MCMC(data, init_guess):
         param_errors = np.array(params_uncert)
     return params, param_errors
 
-def fit_GPR(timetable):
+def fit_GPR(timetable, nosetest=False):
     '''
     Performs a Gaussian Process Regression to infer temperature v. time dependence
 
@@ -159,6 +159,8 @@ def fit_GPR(timetable):
     timetable: pandas DataFrame
         DataFrame of data and metadata for temperatures at a certain depth over a large period of time
         Incoporates the following columns: year, Temperature, prediction_errors (error on regressions from above)
+    nosetest: bool
+        Whether or not to perform sampling. This is useful in nosetests to make sure that the model compiles.
 
     Returns
     -------
@@ -196,28 +198,29 @@ def fit_GPR(timetable):
         y_ = gp.marginal_likelihood("y", X=X, y=y, noise=sigma)
 
     # perform hyperparameter sampling (this trains our model)
-    with marginal_gp_model:
-        traces = pm.sample()
+    if not nosetest:
+        with marginal_gp_model:
+            traces = pm.sample()
 
-    # plot posterior
-    az.plot_trace(traces)
-    plt.show()
+        # plot posterior
+        az.plot_trace(traces)
+        plt.show()
 
-    # predictions
-    range_x = np.max(X) - np.min(X)
-    Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
-    with marginal_gp_model:
-        y_pred = gp.conditional('y_pred', Xnew)
-        ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=100)
+        # predictions
+        range_x = np.max(X) - np.min(X)
+        Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
+        with marginal_gp_model:
+            y_pred = gp.conditional('y_pred', Xnew)
+            ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=100)
 
-    # plot results
-    plt.scatter(X, y, c='red', label='True data')
-    plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
-    plt.xlabel('Time [years]')
-    plt.ylabel('Temperature [$^\\ocirc C$]')
-    plt.title('Temperature vs. time\nPosterior of Gaussian Process Regression')
-    plt.legend()
-    plt.show()
+        # plot results
+        plt.scatter(X, y, c='red', label='True data')
+        plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
+        plt.xlabel('Time [years]')
+        plt.ylabel('Temperature [$^\\ocirc C$]')
+        plt.title('Temperature vs. time\nPosterior of Gaussian Process Regression')
+        plt.legend()
+        plt.show()
 
     return marginal_gp_model
 
