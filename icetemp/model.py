@@ -4,7 +4,6 @@ import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
 import pymc3 as pm
-import theano.tensor as tt
 
 def calc_linear_likelihood(data, m, b):
     """
@@ -163,50 +162,63 @@ def fit_GPR(timetable):
 
     Returns
     -------
-    gpr_model: pymc3 model
+    marginal_gp_model: pymc3 model
         model that will later allow us to sample and plot the posterior predictive distribution of
         temperature vs. time
     '''
     
     # data extraction
-    years = timetable['year'].values
-    temps = timetable['Temperature'].values
-    pred_errors = timetable['prediction_errors'].values
+    X = timetable['year'].values[:, None]
+    y = timetable['Temperature'].values
+    sigma = timetable['prediction_errors'].values
 
-    # defining the model and sampling
-    with pm.Model() as gpr_model:
+    # compute mean of data
+    mu = y.mean()
 
-        l = pm.Uniform("l", 0, 10)
-        eta = pm.HalfCauchy("η", beta=5)
+    with pm.Model() as marginal_gp_model:
+        # prior on length scale. change prior with future iterations of model
+        ls = pm.Gamma('ls', 1, 0.5)
         
-        cov = eta**2 * pm.gp.cov.ExpQuad(1, l)
-        gp = pm.gp.Latent(cov_func=cov)
+        # (Vinny) can also make the noise level and mean into parameters, if
+        # you want:
+        #sigma = pm.HalfCauchy('sigma', 1)
+        #mu = pm.Normal('mu', y.mean(), sigma)
         
-        # the gaussian process prior
-        f = gp.prior("f", X=years)
+        # Specify the mean and covariance functions
+        cov_func = pm.gp.cov.ExpQuad(1, ls=ls)
+        mean_func = pm.gp.mean.Constant(mu)
+
+        # Specify the GP.
+        gp = pm.gp.Marginal(cov_func=cov_func, mean_func=mean_func)
         
-        y_obs = pm.Normal("y", mu=f, sd = pred_errors, observed=temps)
+        # set the marginal likelihood based on the training data
+        # and give it the noise level
+        y_ = gp.marginal_likelihood("y", X=X, y=y, noise=sigma)
 
-        # sampling
-        trace = pm.sample(2000)
+    # perform hyperparameter sampling (this trains our model)
+    with marginal_gp_model:
+        traces = pm.sample()
 
-    # traceplotting
-    pm.traceplot(trace[1000:], varnames=['l', 's2_f', 's2_n'])
+    # plot posterior
+    az.plot_trace(traces)
+    plt.show()
 
-    # compute samples from posterior predictive distribution
-    year_range = np.max(years) - np.min(years)
-    Z = np.linspace(np.min(years) - year_range/0.15, np.max(years) + year_range/0.15, 100)
-    with gpr_model:
-        gp_samples = pm.gp.sample_gp(trace[1000:], y_obs, Z, samples=50, random_seed=42)
+    # predictions
+    range_x = np.max(X) - np.min(X)
+    Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
+    with marginal_gp_model:
+        y_pred = gp.conditional('y_pred', Xnew)
+        ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=100)
 
-    # plottting PPD
-    _, ax = plt.subplots(figsize=(14,5))
-    [ax.plot(Z, x, color=cm(0.3), alpha=0.3) for x in gp_samples]
-    ax.plot(years, temps, 'ok', ms=10)
-    ax.set_xlabel('Time [years]')
-    ax.set_ylabel('Temperature [$^\\circ C$]')
-    ax.set_title('Posterior predictive distribution')
+    # plot results
+    plt.scatter(X, y, c='red', label='True data')
+    plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
+    plt.xlabel('Time [years]')
+    plt.ylabel('Temperature [$^\\ocirc C$]')
+    plt.title('Temperature vs. time\nPosterior of Gaussian Process Regression')
+    plt.legend()
+    plt.show()
 
-    return gpr_model
+    return marginal_gp_model
 
     
