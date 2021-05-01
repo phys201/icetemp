@@ -4,6 +4,7 @@ import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
 import pymc3 as pm
+import pandas as pd
 
 def calc_linear_likelihood(data, m, b):
     """
@@ -244,7 +245,7 @@ def get_timetable(n, data):
         plt.plot(x, polynomial, linestyle='dashed', color='blue')
         plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(n, data[year]['data_year'][0]))
 
-    timetable = pd.DataFrame({'year': year_list, 'Temperature': temp_list, 'prediction_errors': pred_errs_list})
+    timetable = pd.DataFrame({'year': year_list, 'temperature': temp_list, 'prediction_errors': pred_errs_list})
     return timetable
 
 
@@ -256,7 +257,7 @@ def fit_GPR(timetable):
     ----------
     timetable: pandas DataFrame
         DataFrame of data and metadata for temperatures at a certain depth over a large period of time
-        Incoporates the following columns: year, Temperature, prediction_errors (error on regressions from above)
+        Incoporates the following columns: year, temperature, prediction_errors (error on regressions from above)
 
     Returns
     -------
@@ -267,7 +268,7 @@ def fit_GPR(timetable):
 
     # data extraction
     X = timetable['year'].values[:, None]
-    y = timetable['Temperature'].values
+    y = timetable['temperature'].values
     sigma = timetable['prediction_errors'].values
 
     # compute mean of data
