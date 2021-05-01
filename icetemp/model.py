@@ -16,12 +16,12 @@ def calc_linear_likelihood(data, m, b):
         data and metadata contained in pandas DataFrame
         Format described in tutotial notebook
     m, b : floats
-        parameter values used in calculation of likelihood 
+        parameter values used in calculation of likelihood
 
     Returns
     -------
     likelihood : double
-        The likelihood for a linear model given the data and specified parameters 
+        The likelihood for a linear model given the data and specified parameters
     """
 
     # prepare data
@@ -43,12 +43,12 @@ def calc_quad_likelihood(data, q, m, b):
         data and metadata contained in pandas DataFrame
         Format described in tutotial notebook
     q, m, b : floats
-        parameter values used in calculation of likelihood 
+        parameter values used in calculation of likelihood
 
     Returns
     -------
     likelihood : double
-        The likelihood for a quadratic model given the data and specified parameters 
+        The likelihood for a quadratic model given the data and specified parameters
     """
 
     # prepare data
@@ -145,12 +145,110 @@ def fit_quad_MCMC(data, init_guess):
         for parameter in ['b', 'm', 'q']:
             params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
             params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
-        
+
         params = np.array(params_list)
         param_errors = np.array(params_uncert)
     return params, param_errors
 
-def fit_GPR(timetable, nosetest=False):
+def n_polyfit_MCMC(n, data):
+    """
+    Fits the data to a quadratic function using pymc3
+    Errors on temperature are considered in the model
+    model: temp = q*depth^2 + m*depth + b
+    Plots the traces in the MCMC
+
+    Parameters
+    ----------
+    n: integer
+        indicates the power of the polynomial fit
+    data : pandas DataFrame
+        data and metadata contained in pandas DataFrame
+        Format described in tutotial notebook
+
+    Returns
+    -------
+    params, param_errors: 1D numpy arrays of floats
+        parameter values from the model
+        standard deviations of each parameter
+
+    """
+    # prepare data
+    depth = data['Depth'].values
+    temp = data['Temperature'].values
+    sigma_y = data['temp_errors'].values
+
+    with pm.Model() as _:
+        # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
+        C_n = [pm.Uniform('C_{}'.format(i), -100, 100) for i in range(n+1)]
+        polynomial = np.sum([C_n[i] * depth**i for i in range(n+1)])
+
+        # define likelihood
+        y_obs = pm.Normal("temp_pred", mu = polynomial, sd = sigma_y, observed=temp)
+
+        # unleash the inference
+        n_tuning_steps = 2000
+        ndraws = 2500
+        traces = pm.sample(start=pm.find_MAP(), tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
+        az.plot_trace(traces)
+
+        # extract parameters and uncertainty using arviz
+        params_list = []
+        params_uncert = []
+        for parameter in ['C_{}'.format(i) for i in range(n+1)]:
+            params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
+            params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
+
+        params = np.array(params_list)
+        param_errors = np.array(params_uncert)
+    return params, param_errors
+
+def get_timetable(n, data):
+    """
+    Fits the data to a quadratic function using pymc3
+    Errors on temperature are considered in the model
+    model: temp = q*depth^2 + m*depth + b
+    Plots the traces in the MCMC
+
+    Parameters
+    ----------
+    n: integer
+        indicates the power of the polynomial fit
+    data : pandas DataFrame
+        data and metadata contained in pandas DataFrame
+        Format described in tutotial notebook
+
+    Returns
+    -------
+    timetable: pandas DataFrame
+        data and metadata contained in pandas DataFrame
+        Format described in tutotial notebook
+
+    """
+    # range of depth locations
+    x = np.linspace(800,2500)
+
+    year_list = []
+    temp_list = []
+    pred_errs_list = []
+    for year in range(len(data)):
+        params, errors = n_polyfit_MCMC(n, data[year]) # returns params in order C_0, C_1, C_2,...
+        print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
+        print(params)
+
+        year_list.append(data[year]['data_year'][0])
+        temp_list.append(params[0])
+        pred_errs_list.append(errors[0])
+
+        polynomial = np.sum([params[i] * x**i for i in range(n+1)], axis = 0)
+        data[year].plot(x='Depth', y='Temperature', kind='scatter', yerr=0.1,color='orange')
+        plt.plot(x, polynomial, linestyle='dashed', color='blue')
+        plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(n, data[year]['data_year'][0]))
+
+    timetable = pd.DataFrame({'year': year_list, 'Temperature': temp_list, 'prediction_errors': pred_errs_list})
+    return timetable
+
+
+def fit_GPR(timetable):
     '''
     Performs a Gaussian Process Regression to infer temperature v. time dependence
 
@@ -159,8 +257,6 @@ def fit_GPR(timetable, nosetest=False):
     timetable: pandas DataFrame
         DataFrame of data and metadata for temperatures at a certain depth over a large period of time
         Incoporates the following columns: year, Temperature, prediction_errors (error on regressions from above)
-    nosetest: bool
-        Whether or not to perform sampling. This is useful in nosetests to make sure that the model compiles.
 
     Returns
     -------
@@ -168,7 +264,7 @@ def fit_GPR(timetable, nosetest=False):
         model that will later allow us to sample and plot the posterior predictive distribution of
         temperature vs. time
     '''
-    
+
     # data extraction
     X = timetable['year'].values[:, None]
     y = timetable['Temperature'].values
@@ -180,48 +276,45 @@ def fit_GPR(timetable, nosetest=False):
     with pm.Model() as marginal_gp_model:
         # prior on length scale. change prior with future iterations of model
         ls = pm.Gamma('ls', 1, 0.5)
-        
+
         # (Vinny) can also make the noise level and mean into parameters, if
         # you want:
         #sigma = pm.HalfCauchy('sigma', 1)
         #mu = pm.Normal('mu', y.mean(), sigma)
-        
+
         # Specify the mean and covariance functions
         cov_func = pm.gp.cov.ExpQuad(1, ls=ls)
         mean_func = pm.gp.mean.Constant(mu)
 
         # Specify the GP.
         gp = pm.gp.Marginal(cov_func=cov_func, mean_func=mean_func)
-        
+
         # set the marginal likelihood based on the training data
         # and give it the noise level
         y_ = gp.marginal_likelihood("y", X=X, y=y, noise=sigma)
 
     # perform hyperparameter sampling (this trains our model)
-    if not nosetest:
-        with marginal_gp_model:
-            traces = pm.sample()
+    with marginal_gp_model:
+        traces = pm.sample()
 
-        # plot posterior
-        az.plot_trace(traces)
-        plt.show()
+    # plot posterior
+    az.plot_trace(traces)
+    plt.show()
 
-        # predictions
-        range_x = np.max(X) - np.min(X)
-        Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
-        with marginal_gp_model:
-            y_pred = gp.conditional('y_pred', Xnew)
-            ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=100)
+    # predictions
+    range_x = np.max(X) - np.min(X)
+    Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
+    with marginal_gp_model:
+        y_pred = gp.conditional('y_pred', Xnew)
+        ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=100)
 
-        # plot results
-        plt.scatter(X, y, c='red', label='True data')
-        plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
-        plt.xlabel('Time [years]')
-        plt.ylabel('Temperature [$^\\ocirc C$]')
-        plt.title('Temperature vs. time\nPosterior of Gaussian Process Regression')
-        plt.legend()
-        plt.show()
+    # plot results
+    plt.scatter(X, y, c='red', label='True data')
+    plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
+    plt.xlabel('Time [years]')
+    plt.ylabel('Temperature [$^\\ocirc C$]')
+    plt.title('Temperature vs. time\nPosterior of Gaussian Process Regression')
+    plt.legend()
+    plt.show()
 
     return marginal_gp_model
-
-    
