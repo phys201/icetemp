@@ -1,18 +1,25 @@
+# adapted from https://github.com/phys201/example/blob/main/.gitignore
 # Tutorial checkpoint
-.ipynb_checkpoints/tutorial-checkpoint.ipynb
+.ipynb_checkpoints/
+/*.ipynb_checkpoints 
+
+# swp files
+*.swp
 
 # Compiled python modules.
 *.pyc
+__pycache__/
 
 # Setuptools distribution folder.
 /dist/
 
+# Mac stuff
+.DS_Store
+icetemp/south_pole_ice_temperature_data_release/.DS_Store
+ROOTSYS/
+
 # Python egg metadata, regenerated from source files by setuptools.
+eggs/
+.eggs/
 /*.egg-info
 /*.egg
-.ipynb_checkpoints/tutorial-checkpoint.ipynb
-.ipynb_checkpoints/tutorial-checkpoint.ipynb
-icetemp/south_pole_ice_temperature_data_release/.DS_Store
-.ipynb_checkpoints/tutorial-checkpoint.ipynb
-.ipynb_checkpoints/tutorial-checkpoint.ipynb
-.ipynb_checkpoints/tutorial-checkpoint.ipynb
