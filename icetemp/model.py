@@ -249,7 +249,7 @@ def get_timetable(n, data):
     return timetable
 
 
-def fit_GPR(timetable):
+def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
     '''
     Performs a Gaussian Process Regression to infer temperature v. time dependence
 
@@ -258,6 +258,12 @@ def fit_GPR(timetable):
     timetable: pandas DataFrame
         DataFrame of data and metadata for temperatures at a certain depth over a large period of time
         Incoporates the following columns: year, temperature, prediction_errors (error on regressions from above)
+    pplot_post_pred_samples: bool
+        If false, the posterior predictive distribution is plotted by visualizing the mean PPC values + 1-sigma std
+        devs at each X-value. If true, posterior predictive distribution is plotted by visualizing samples from the
+        posterio predictive distribution.
+    num_post_pred_samples: int
+        Number of poster predictive samples to take when visualizing posterior predictive distribution of fit
 
     Returns
     -------
@@ -307,11 +313,25 @@ def fit_GPR(timetable):
     Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
     with marginal_gp_model:
         y_pred = gp.conditional('y_pred', Xnew)
-        ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=100)
+        ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=num_post_pred_samples)
 
-    # plot results
+    # plotting
     plt.errorbar(X, y, yerr=sigma, c='red', fmt='o', label='True data')
-    plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
+
+    # plot posterior predictive samples
+    if plot_post_pred_samples:
+        plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
+    
+    # plot posterior predictive distribution
+    else:
+        # get mean and std of posterior predictive distribution
+        mean_ppc = np.mean(ppc['y_pred'], axis=0)
+        std_ppc = np.std(ppc['y_pred'], axis=0)
+
+        # plotting
+        plt.plot(Xnew, mean_ppc, c='grey', label='Posterior predictive mean')
+        plt.fill_between(Xnew.flatten(), mean_ppc - std_ppc, mean_ppc + std_ppc, color='grey', alpha=0.1, label='1$\\sigma$ posterior predictive region')
+
     plt.xlabel('Time [years]')
     plt.ylabel('Temperature [$^\\ocirc C$]')
     plt.title('Temperature vs. time\nPosterior of Gaussian Process Regression')
