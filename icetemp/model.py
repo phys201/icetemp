@@ -310,7 +310,7 @@ def fit_GPR(timetable):
         ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=100)
 
     # plot results
-    plt.scatter(X, y, c='red', label='True data')
+    plt.errorbar(X, y, yerr=sigma, c='red', fmt='o', label='True data')
     plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
     plt.xlabel('Time [years]')
     plt.ylabel('Temperature [$^\\ocirc C$]')
