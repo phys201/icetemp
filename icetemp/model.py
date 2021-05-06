@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pymc3 as pm
 import pandas as pd
+from scipy import stats
 
 def calc_linear_likelihood(data, m, b):
     """
@@ -248,6 +249,30 @@ def get_timetable(n, data):
     timetable = pd.DataFrame({'year': year_list, 'temperature': temp_list, 'prediction_errors': pred_errs_list})
     return timetable
 
+def get_odds_ratio(timetable1, timetable2):
+    """
+    Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
+
+    Parameters
+    ----------
+    timetable1, timetable2: pandas DataFrame
+        data and metadata contained in pandas DataFrame
+        Format described in tutotial notebook
+
+
+    Returns
+    -------
+    odds_ratio: float
+        Determines a favorable model out of the two models.
+
+    """
+    # range of depth locations
+    x = np.linspace(800,2500)
+
+    likelihood1 = np.prod(stats.norm.pdf(x, timetable1['temperature'], timetable1['prediction_errors']))
+    likelihood2 = np.prod(stats.norm.pdf(x, timetable2['temperature'], timetable2['prediction_errors']))
+
+    return np.divide(likelihood1/likelihood2)
 
 def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
     '''
@@ -321,7 +346,7 @@ def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
     # plot posterior predictive samples
     if plot_post_pred_samples:
         plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
-    
+
     # plot posterior predictive distribution
     else:
         # get mean and std of posterior predictive distribution
