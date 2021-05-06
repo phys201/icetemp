@@ -281,8 +281,11 @@ def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
     mu = y.mean()
 
     with pm.Model() as marginal_gp_model:
-        # prior on length scale. change prior with future iterations of model
-        ls = pm.Gamma('ls', 1, 0.5)
+        # prior on length scale
+        l = pm.Gamma('l', 1, 0.5)
+
+        # prior on amplitude term
+        a = pm.HalfNormal('a', sigma=1.0)
 
         # (Vinny) can also make the noise level and mean into parameters, if
         # you want:
@@ -290,11 +293,11 @@ def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
         #mu = pm.Normal('mu', y.mean(), sigma)
 
         # Specify the mean and covariance functions
-        cov_func = pm.gp.cov.ExpQuad(1, ls=ls)
+        cov_func = pm.gp.cov.ExpQuad(1, ls=l)
         mean_func = pm.gp.mean.Constant(mu)
 
         # Specify the GP.
-        gp = pm.gp.Marginal(cov_func=cov_func, mean_func=mean_func)
+        gp = pm.gp.Marginal(cov_func=a*cov_func, mean_func=mean_func)
 
         # set the marginal likelihood based on the training data
         # and give it the noise level
