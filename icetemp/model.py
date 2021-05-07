@@ -127,9 +127,9 @@ def fit_quad_MCMC(data, init_guess):
 
     with pm.Model() as _:
         # define priors for each parameter in the quadratic fit
-        m = pm.Uniform('m', -100, 100)
-        b = pm.Uniform('b', -100, 100)
-        q = pm.Uniform('q', -100, 100)
+        m = pm.Flat('m')
+        b = pm.Flat('b')
+        q = pm.Flat('q')
         line = q * depth**2 + m * depth + b
 
         # define likelihood
@@ -253,36 +253,45 @@ def get_timetable(n, data, init_guess):
     timetable = pd.DataFrame({'year': year_list, 'temperature': temp_list, 'prediction_errors': pred_errs_list})
     return timetable
 
-# def get_odds_ratio(n_M1, n_M2, data):
-#     """
-#     Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
-#
-#     Parameters
-#     ----------
-#     n_M1, n_M2: integer
-#         describes the highest order (n) of the polynomial from each model
-#
-#     Returns
-#     -------
-#     odds_ratio: float
-#         Determines a favorable model out of the two models.
-#
-#     """
-#     # range of depth locations
-#     x = np.linspace(800,2500)
-#
-#     for year in range(len(data)):
-#         sigma_y = data[year]['temp_errors'].values
-#         params1, errors1 = n_polyfit_MCMC(n_M1, data[year]) # returns params in order C_0, C_1, C_2,...
-#         params2, errors2 = n_polyfit_MCMC(n_M2, data[year]) # returns params in order C_0, C_1, C_2,...
-#
-#     mu1 = np.sum([params1[i] * x**i for i in range(n+1)], axis = 0)
-#     mu2 = np.sum([params2[i] * x**i for i in range(n+1)], axis = 0)
-#
-#     likelihood1 = np.prod(stats.norm.pdf(x, mu1, sigma_y))
-#     likelihood2 = np.prod(stats.norm.pdf(x, mu2, sigma_y))
-#
-#     return np.divide(likelihood1/likelihood2)
+def get_odds_ratio(n_M1, n_M2, data):
+    """
+    Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
+
+    Parameters
+    ----------
+    n_M1, n_M2: integer
+        describes the highest order (n) of the polynomial from each model
+
+    Returns
+    -------
+    odds_ratio: float
+        Determines a favorable model out of the two models.
+
+    """
+    # range of depth locations
+    x = np.linspace(800,2500)
+    odds_ratio_list = []
+
+    for year in range(len(data)):
+
+        # prepare data
+        depth = data[year]['Depth'].values
+        temp = data[year]['Temperature'].values
+        temp_error = data[year]['temp_errors'].values
+
+        params1, errors1 = n_polyfit_MCMC(n_M1, data[year]) # returns params in order C_0, C_1, C_2,...
+        params2, errors2 = n_polyfit_MCMC(n_M2, data[year]) # returns params in order C_0, C_1, C_2,...
+
+        mu1 = np.sum([params1[i] * x**i for i in range(n+1)], axis = 0)
+        mu2 = np.sum([params2[i] * x**i for i in range(n+1)], axis = 0)
+
+        # calculate likelihood
+        likelihood1 =  np.prod(1. / np.sqrt(2 * np.pi * temp_error ** 2) * np.exp(-(temp - mu1)**2 / (2 * temp_error ** 2) ) )
+        likelihood1 =  np.prod(1. / np.sqrt(2 * np.pi * temp_error ** 2) * np.exp(-(temp - mu2)**2 / (2 * temp_error ** 2) ) )
+
+        # calculate odds ratio
+        odds_ratio_list.append(np.divide(likelihood1/likelihood2))
+    return odds_ratio_list
 
 def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
     '''
