@@ -179,9 +179,12 @@ def n_polyfit_MCMC(n, data):
     temp = data['Temperature'].values
     sigma_y = data['temp_errors'].values
 
+    # generate initial guess
+    initial_guess = {'C_{}'.format(i):0.00 for i in range(n+1)}
+
     with pm.Model() as _:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
-        C_n = [pm.Uniform('C_{}'.format(i), -100, 100) for i in range(n+1)]
+        C_n = [pm.Flat('C_{}'.format(i)) for i in range(n+1)]
         polynomial = np.sum([C_n[i] * depth**i for i in range(n+1)])
 
         # define likelihood
@@ -190,7 +193,7 @@ def n_polyfit_MCMC(n, data):
         # unleash the inference
         n_tuning_steps = 2000
         ndraws = 2500
-        traces = pm.sample(start=pm.find_MAP(), tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
+        traces = pm.sample(start=initial_guess, tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
         # extract parameters and uncertainty using arviz
@@ -202,7 +205,11 @@ def n_polyfit_MCMC(n, data):
 
         params = np.array(params_list)
         param_errors = np.array(params_uncert)
-    return params, param_errors
+
+    mean_mu = np.sum([params[i] * depth**i for i in range(n+1)])
+    likelihood = np.prod(stats.norm.pdf(depth, mean_mu, sigma_y))
+
+    return params, param_errors, likelihood
 
 def get_timetable(n, data):
     """
@@ -215,9 +222,8 @@ def get_timetable(n, data):
     ----------
     n: integer
         indicates the power of the polynomial fit
-    data : pandas DataFrame
-        data and metadata contained in pandas DataFrame
-        Format described in tutotial notebook
+    data : list with names for pandas DataFrame
+        list of names of data and metadata contained in pandas DataFrame
 
     Returns
     -------
@@ -249,30 +255,30 @@ def get_timetable(n, data):
     timetable = pd.DataFrame({'year': year_list, 'temperature': temp_list, 'prediction_errors': pred_errs_list})
     return timetable
 
-def get_odds_ratio(timetable1, timetable2):
-    """
-    Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
-
-    Parameters
-    ----------
-    timetable1, timetable2: pandas DataFrame
-        data and metadata contained in pandas DataFrame
-        Format described in tutotial notebook
-
-
-    Returns
-    -------
-    odds_ratio: float
-        Determines a favorable model out of the two models.
-
-    """
-    # range of depth locations
-    x = np.linspace(800,2500)
-
-    likelihood1 = np.prod(stats.norm.pdf(x, timetable1['temperature'], timetable1['prediction_errors']))
-    likelihood2 = np.prod(stats.norm.pdf(x, timetable2['temperature'], timetable2['prediction_errors']))
-
-    return np.divide(likelihood1/likelihood2)
+# def get_odds_ratio(timetable1, timetable2):
+#     """
+#     Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
+#
+#     Parameters
+#     ----------
+#     timetable1, timetable2: pandas DataFrame
+#         data and metadata contained in pandas DataFrame
+#         Format described in tutotial notebook
+#
+#
+#     Returns
+#     -------
+#     odds_ratio: float
+#         Determines a favorable model out of the two models.
+#
+#     """
+#     # range of Antartic temperatures
+#     x = np.linspace(0,-80)
+#
+#     likelihood1 = np.prod(stats.norm.pdf(x, timetable1['temperature'], timetable1['prediction_errors']))
+#     likelihood2 = np.prod(stats.norm.pdf(x, timetable2['temperature'], timetable2['prediction_errors']))
+#
+#     return np.divide(likelihood1/likelihood2)
 
 def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
     '''
