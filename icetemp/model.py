@@ -193,7 +193,7 @@ def n_polyfit_MCMC(n, data):
         # unleash the inference
         n_tuning_steps = 2000
         ndraws = 2500
-        traces = pm.sample(start=initial_guess, tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
+        traces = pm.sample(start=pm.find_MAP(start=initial_guess), tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
         # extract parameters and uncertainty using arviz
@@ -206,10 +206,7 @@ def n_polyfit_MCMC(n, data):
         params = np.array(params_list)
         param_errors = np.array(params_uncert)
 
-    mean_mu = np.sum([params[i] * depth**i for i in range(n+1)])
-    likelihood = np.prod(stats.norm.pdf(depth, mean_mu, sigma_y))
-
-    return params, param_errors, likelihood
+    return params, param_errors
 
 def get_timetable(n, data):
     """
@@ -255,16 +252,14 @@ def get_timetable(n, data):
     timetable = pd.DataFrame({'year': year_list, 'temperature': temp_list, 'prediction_errors': pred_errs_list})
     return timetable
 
-# def get_odds_ratio(timetable1, timetable2):
+# def get_odds_ratio(n_M1, n_M2, data):
 #     """
 #     Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
 #
 #     Parameters
 #     ----------
-#     timetable1, timetable2: pandas DataFrame
-#         data and metadata contained in pandas DataFrame
-#         Format described in tutotial notebook
-#
+#     n_M1, n_M2: integer
+#         describes the highest order (n) of the polynomial from each model
 #
 #     Returns
 #     -------
@@ -272,11 +267,19 @@ def get_timetable(n, data):
 #         Determines a favorable model out of the two models.
 #
 #     """
-#     # range of Antartic temperatures
-#     x = np.linspace(0,-80)
+#     # range of depth locations
+#     x = np.linspace(800,2500)
 #
-#     likelihood1 = np.prod(stats.norm.pdf(x, timetable1['temperature'], timetable1['prediction_errors']))
-#     likelihood2 = np.prod(stats.norm.pdf(x, timetable2['temperature'], timetable2['prediction_errors']))
+#     for year in range(len(data)):
+#         sigma_y = data[year]['temp_errors'].values
+#         params1, errors1 = n_polyfit_MCMC(n_M1, data[year]) # returns params in order C_0, C_1, C_2,...
+#         params2, errors2 = n_polyfit_MCMC(n_M2, data[year]) # returns params in order C_0, C_1, C_2,...
+#
+#     mu1 = np.sum([params1[i] * x**i for i in range(n+1)], axis = 0)
+#     mu2 = np.sum([params2[i] * x**i for i in range(n+1)], axis = 0)
+#
+#     likelihood1 = np.prod(stats.norm.pdf(x, mu1, sigma_y))
+#     likelihood2 = np.prod(stats.norm.pdf(x, mu2, sigma_y))
 #
 #     return np.divide(likelihood1/likelihood2)
 
