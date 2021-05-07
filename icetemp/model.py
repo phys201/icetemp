@@ -237,7 +237,7 @@ def get_timetable(n, data, init_guess):
     temp_list = []
     pred_errs_list = []
     for year in range(len(data)):
-        params, errors = n_polyfit_MCMC(n, data[year], init_guess) # returns params in order C_0, C_1, C_2,...
+        params, errors = n_polyfit_MCMC(n, data[year], init_guess[year]) # returns params in order C_0, C_1, C_2,...
         print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
         print(params)
 
