@@ -293,7 +293,7 @@ def get_odds_ratio(n_M1, n_M2, data):
         odds_ratio_list.append(np.divide(likelihood1/likelihood2))
     return odds_ratio_list
 
-def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
+def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150, nosetest=False):
     '''
     Performs a Gaussian Process Regression to infer temperature v. time dependence
 
@@ -308,6 +308,8 @@ def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
         posterio predictive distribution.
     num_post_pred_samples: int
         Number of poster predictive samples to take when visualizing posterior predictive distribution of fit
+    nosetest: bool
+        Whether or not to simply compile the model for testing.
 
     Returns
     -------
@@ -347,42 +349,45 @@ def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150):
         # and give it the noise level
         y_ = gp.marginal_likelihood("y", X=X, y=y, noise=sigma)
 
-    # perform hyperparameter sampling (this trains our model)
-    with marginal_gp_model:
-        traces = pm.sample()
+    # not a test, proceed with sampling
+    if not nosetest:
 
-    # plot posterior
-    az.plot_trace(traces)
-    plt.show()
+        # perform hyperparameter sampling (this trains our model)
+        with marginal_gp_model:
+            traces = pm.sample()
 
-    # predictions
-    range_x = np.max(X) - np.min(X)
-    Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
-    with marginal_gp_model:
-        y_pred = gp.conditional('y_pred', Xnew)
-        ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=num_post_pred_samples)
+        # plot posterior
+        az.plot_trace(traces)
+        plt.show()
 
-    # plotting
-    plt.errorbar(X, y, yerr=sigma, c='red', fmt='o', label='True data')
-
-    # plot posterior predictive samples
-    if plot_post_pred_samples:
-        plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
-
-    # plot posterior predictive distribution
-    else:
-        # get mean and std of posterior predictive distribution
-        mean_ppc = np.mean(ppc['y_pred'], axis=0)
-        std_ppc = np.std(ppc['y_pred'], axis=0)
+        # predictions
+        range_x = np.max(X) - np.min(X)
+        Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
+        with marginal_gp_model:
+            y_pred = gp.conditional('y_pred', Xnew)
+            ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=num_post_pred_samples)
 
         # plotting
-        plt.plot(Xnew, mean_ppc, c='grey', label='Posterior predictive mean')
-        plt.fill_between(Xnew.flatten(), mean_ppc - std_ppc, mean_ppc + std_ppc, color='grey', alpha=0.1, label='1$\\sigma$ posterior predictive region')
+        plt.errorbar(X, y, yerr=sigma, c='red', fmt='o', label='True data')
 
-    plt.xlabel('Time [years]')
-    plt.ylabel('Temperature [$^\\ocirc C$]')
-    plt.title('Temperature vs. time\nPosterior of Gaussian Process Regression')
-    plt.legend()
-    plt.show()
+        # plot posterior predictive samples
+        if plot_post_pred_samples:
+            plt.plot(Xnew, ppc['y_pred'].T, c='grey', alpha=0.1)
+
+        # plot posterior predictive distribution
+        else:
+            # get mean and std of posterior predictive distribution
+            mean_ppc = np.mean(ppc['y_pred'], axis=0)
+            std_ppc = np.std(ppc['y_pred'], axis=0)
+
+            # plotting
+            plt.plot(Xnew, mean_ppc, c='grey', label='Posterior predictive mean')
+            plt.fill_between(Xnew.flatten(), mean_ppc - std_ppc, mean_ppc + std_ppc, color='grey', alpha=0.1, label='1$\\sigma$ posterior predictive region')
+
+        plt.xlabel('Time [years]')
+        plt.ylabel('Temperature [$^\\ocirc C$]')
+        plt.title('Temperature vs. time\nPosterior of Gaussian Process Regression')
+        plt.legend()
+        plt.show()
 
     return marginal_gp_model
