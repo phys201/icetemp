@@ -136,7 +136,7 @@ def fit_quad_MCMC(data, init_guess):
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
         # unleash the inference
-        n_tuning_steps = 2000
+        n_tuning_steps = 1500
         ndraws = 2500
         traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=2) # need at least two chains to use following arviz function
         az.plot_trace(traces)
@@ -152,7 +152,7 @@ def fit_quad_MCMC(data, init_guess):
         param_errors = np.array(params_uncert)
     return params, param_errors
 
-def n_polyfit_MCMC(n, data):
+def n_polyfit_MCMC(n, data, init_guess):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
@@ -166,6 +166,8 @@ def n_polyfit_MCMC(n, data):
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
         Format described in tutotial notebook
+    init_guess : dict
+        dictionary containing initial values for each of the parameters in the model
 
     Returns
     -------
@@ -179,9 +181,6 @@ def n_polyfit_MCMC(n, data):
     temp = data['Temperature'].values
     sigma_y = data['temp_errors'].values
 
-    # generate initial guess
-    initial_guess = {'C_{}'.format(i):0.00 for i in range(n+1)}
-
     with pm.Model() as _:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
         C_n = [pm.Flat('C_{}'.format(i)) for i in range(n+1)]
@@ -191,9 +190,9 @@ def n_polyfit_MCMC(n, data):
         y_obs = pm.Normal("temp_pred", mu = polynomial, sd = sigma_y, observed=temp)
 
         # unleash the inference
-        n_tuning_steps = 2000
+        n_tuning_steps = 1500
         ndraws = 2500
-        traces = pm.sample(start=pm.find_MAP(start=initial_guess), tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
+        traces = pm.sample(start=pm.find_MAP(start=init_guess), tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
         # extract parameters and uncertainty using arviz
@@ -208,7 +207,7 @@ def n_polyfit_MCMC(n, data):
 
     return params, param_errors
 
-def get_timetable(n, data):
+def get_timetable(n, data, init_guess):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
@@ -221,6 +220,8 @@ def get_timetable(n, data):
         indicates the power of the polynomial fit
     data : list with names for pandas DataFrame
         list of names of data and metadata contained in pandas DataFrame
+    init_guess : dict
+        dictionary containing initial values for each of the parameters in the model
 
     Returns
     -------
@@ -236,7 +237,7 @@ def get_timetable(n, data):
     temp_list = []
     pred_errs_list = []
     for year in range(len(data)):
-        params, errors = n_polyfit_MCMC(n, data[year]) # returns params in order C_0, C_1, C_2,...
+        params, errors = n_polyfit_MCMC(n, data[year], init_guess) # returns params in order C_0, C_1, C_2,...
         print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
         print(params)
 
