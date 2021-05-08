@@ -6,7 +6,7 @@ This package investigates the change in temperature at the surface of the Antarc
 pip install git+https://github.com/phys201/icetemp.git 
 ```
 
-This package uses `numpy`, `pandas`, `pymc3`, and `arviz`.
+This package uses `numpy`, `scipy`, `pandas`, `pymc3`, and `arviz`.
 ___
 
 ### Data Analysis for Physicists (PHYS 201), Spring 2021, Harvard University. 
