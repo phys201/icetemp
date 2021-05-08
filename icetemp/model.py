@@ -220,8 +220,13 @@ def get_timetable(n, data, init_guess):
         indicates the power of the polynomial fit
     data : list with names for pandas DataFrame
         list of names of data and metadata contained in pandas DataFrame
-    init_guess : dict
-        dictionary containing initial values for each of the parameters in the model
+    init_guess : list of dicts
+        list of dictionaries containing initial values for each of the parameters in the modeli
+
+        NOTE:
+        order in which lists of data and initial guesses are constructed should be the same, i.e.
+        data = [data_2002, data_2007]
+        init_guess = [init_guess_2002, init_guess_2007]
 
     Returns
     -------
