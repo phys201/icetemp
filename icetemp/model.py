@@ -37,7 +37,7 @@ def calc_linear_likelihood(data, C_0, C_1):
 def calc_quad_likelihood(data, C_0, C_1, C_2):
     """
     Calculates the likelihood based on a quadratic model given the data and parameters (m, b)
-    model: temp = C_2*depth^2 + C_1*depth + C_0 
+    model: temp = C_2*depth^2 + C_1*depth + C_0
 
     Parameters
     ----------
@@ -90,7 +90,7 @@ def fit_quad(data):
     Y = temp
     A = depth[:, np.newaxis] ** (0, 1, 2)
     C = np.diag(sigma_y ** 2)
- 
+
     C_inv = np.linalg.inv(C)
     cov_mat = np.linalg.inv(A.T @ C_inv @ A)
     params = cov_mat @ (A.T @ C_inv @ Y)
@@ -293,12 +293,12 @@ def get_odds_ratio(n_M1, n_M2, data, init_guess1, init_guess2):
         mu1 = np.sum([params1[i] * x**i for i in range(n_M1+1)], axis = 0)
         mu2 = np.sum([params2[i] * x**i for i in range(n_M2+1)], axis = 0)
 
-        # calculate likelihood
-        likelihood1 =  np.prod(1. / np.sqrt(2 * np.pi * temp_error ** 2) * np.exp(-(temp - mu1)**2 / (2 * temp_error ** 2) ) )
-        likelihood2 =  np.prod(1. / np.sqrt(2 * np.pi * temp_error ** 2) * np.exp(-(temp - mu2)**2 / (2 * temp_error ** 2) ) )
+        # calculate log likelihood
+        loglikelihood1 = np.sum(np.log(1. / np.sqrt(2 * np.pi * temp_error ** 2)) - (temp - mu1)**2 / (2 * temp_error ** 2))
+        loglikelihood2 = np.sum(np.log(1. / np.sqrt(2 * np.pi * temp_error ** 2)) - (temp - mu2)**2 / (2 * temp_error ** 2))
 
         # calculate odds ratio
-        odds_ratio_list.append(likelihood1/likelihood2)
+        odds_ratio_list.append(loglikelihood1/loglikelihood2)
     return odds_ratio_list
 
 def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150, nosetest=False):
