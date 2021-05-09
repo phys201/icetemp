@@ -100,7 +100,7 @@ def fit_quad(data):
     return params, param_errors
 
 
-def fit_quad_MCMC(data, init_guess):
+def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 5):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
@@ -114,6 +114,12 @@ def fit_quad_MCMC(data, init_guess):
         Format described in tutorial notebook
     init_guess : dict
         dictionary containing initial values for each of the parameters in the model (C_0, C_1, C_2))
+    n_tuning_steps : int
+        number of tuning steps used in MCMC (default = 1500)
+    n_draws : int 
+        number of draws used in MCMC (default = 2500)
+    n_chains : int
+        number of walkers used to sample posterior in MCMC (default = 5)
 
     Returns
     -------
@@ -138,9 +144,7 @@ def fit_quad_MCMC(data, init_guess):
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
         # unleash the inference
-        n_tuning_steps = 1500
-        ndraws = 2500
-        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=5) # need at least two chains to use following arviz function
+        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
         # extract parameters and uncertainty using arviz
