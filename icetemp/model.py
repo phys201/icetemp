@@ -37,7 +37,7 @@ def calc_linear_likelihood(data, C_0, C_1):
 def calc_quad_likelihood(data, C_0, C_1, C_2):
     """
     Calculates the likelihood based on a quadratic model given the data and parameters (m, b)
-    model: temp = C_2*depth^2 + C_1*depth + C_0
+    model: temp = C_2*depth^2 + C_1*depth + C_0 
 
     Parameters
     ----------
@@ -90,7 +90,7 @@ def fit_quad(data):
     Y = temp
     A = depth[:, np.newaxis] ** (0, 1, 2)
     C = np.diag(sigma_y ** 2)
-
+ 
     C_inv = np.linalg.inv(C)
     cov_mat = np.linalg.inv(A.T @ C_inv @ A)
     params = cov_mat @ (A.T @ C_inv @ Y)
@@ -113,7 +113,7 @@ def fit_quad_MCMC(data, init_guess):
         data and metadata contained in pandas DataFrame
         Format described in tutorial notebook
     init_guess : dict
-        dictionary containing initial values for each of the parameters in the model
+        dictionary containing initial values for each of the parameters in the model (C_0, C_1, C_2))
 
     Returns
     -------
@@ -129,10 +129,10 @@ def fit_quad_MCMC(data, init_guess):
 
     with pm.Model() as _:
         # define priors for each parameter in the quadratic fit
-        m = pm.Flat('m')
-        b = pm.Flat('b')
-        q = pm.Flat('q')
-        line = q * depth**2 + m * depth + b
+        C_1 = pm.Flat('C_1')
+        C_0 = pm.Flat('C_0')
+        C_2 = pm.Flat('C_2')
+        line = C_2 * depth**2 + C_1 * depth + C_0 
 
         # define likelihood
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
@@ -140,13 +140,13 @@ def fit_quad_MCMC(data, init_guess):
         # unleash the inference
         n_tuning_steps = 1500
         ndraws = 2500
-        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=2) # need at least two chains to use following arviz function
+        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=5) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
         # extract parameters and uncertainty using arviz
         params_list = []
         params_uncert = []
-        for parameter in ['b', 'm', 'q']:
+        for parameter in ['C_0', 'C_1', 'C_2']:
             params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
             params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
 
@@ -263,17 +263,14 @@ def get_timetable(n, data, init_guess):
 def get_odds_ratio(n_M1, n_M2, data, init_guess1, init_guess2):
     """
     Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
-
     Parameters
     ----------
     n_M1, n_M2: integer
         describes the highest order (n) of the polynomial from each model
-
     Returns
     -------
     odds_ratio: float
         Determines a favorable model out of the two models.
-
     """
     odds_ratio_list = []
 
