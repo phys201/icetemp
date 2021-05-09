@@ -1,4 +1,4 @@
-# unit testing for data_io
+# unit testing for model.py
 from unittest import TestCase
 
 import numpy as np
@@ -21,46 +21,56 @@ quad_temps = q*(depths**2) + m*depths + b
 line_llh_test_df = pd.DataFrame({'Temperature': line_temps, 'Depth': depths, 'temp_errors': np.array([temp_error_llh]*test_size)})
 quad_llh_test_df = pd.DataFrame({'Temperature': quad_temps, 'Depth': depths, 'temp_errors': np.array([temp_error_llh]*test_size)})
 
-# grenerate test DataFrames for fitting
+# generate test DataFrames for fitting
 temp_error_fit = 0.0001
 quad_fit_test_df = pd.DataFrame({'Temperature': quad_temps, 'Depth': depths, 'temp_errors': np.array([temp_error_fit]*test_size)})
 
 # generate timetable for GPR
 timetable_test = pd.DataFrame({'year': [2001, 2005, 2008, 2009], 
-                          'Temperature': [-40., -39.5, -38.2, -37.], 
-                          'prediction_errors': [0.1, 0.1, 0.1, 0.1]})
+    'Temperature': [-40., -39.5, -38.2, -37.], 
+    'prediction_errors': [0.1, 0.1, 0.1, 0.1]})
 
 # object to handle unit testing using nosetests
 class TestModel(TestCase):
-	def test_linear_likelihood(self):
-		'''
-		Computes and tests result of linear likelihood fit of the random test data
-		'''
-		self.assertTrue(np.abs(mod.calc_linear_likelihood(line_llh_test_df, m, b) - 1) < 1e-6)
-
-	def test_quadratic_likelihood(self):
-		'''
-		Computes and tests result of quadratic likelihood fit of the test data
-		'''
-		self.assertTrue(np.abs(mod.calc_quad_likelihood(quad_llh_test_df, q, m, b) - 1) < 1e-6)
-	
-	def test_quadratic_algebraic_fit(self): 
-		'''
-		Tests algebraic quadatic regression result on dummy data
-		'''
-		params, _ = mod.fit_quad(quad_fit_test_df)
-		self.assertTrue(np.abs(params[0] - b) < 1e-3)
-		self.assertTrue(np.abs(params[1] - m) < 1e-3)
-		self.assertTrue(np.abs(params[2] - q) < 1e-3)
-
-	def test_gpr_fit_compiles(self):
-		'''
-		Tests whether or not the GPR sampling model actually compiles
-		'''
-		try:
-			gpr = mod.fit_GPR(timetable_test, nosetest=True)
-			self.assertTrue(True)
-		except:
-			self.assertTrue(False)
+    def test_linear_likelihood(self):
+        '''
+        Computes and tests result of linear likelihood fit of the random test data
+        '''
+        self.assertTrue(np.abs(mod.calc_linear_likelihood(line_llh_test_df, b, m) - 1) < 1e-6)
+    def test_quadratic_likelihood(self):
+        '''
+        Computes and tests result of quadratic likelihood fit of the test data
+        '''
+        self.assertTrue(np.abs(mod.calc_quad_likelihood(quad_llh_test_df, b, m, q) - 1) < 1e-6)
+    def test_quadratic_algebraic_fit(self): 
+        '''
+        Tests algebraic quadratic regression result on dummy data
+        '''
+        params, _ = mod.fit_quad(quad_fit_test_df)
+        self.assertTrue(np.abs(params[0] - b) < 1e-3)
+        self.assertTrue(np.abs(params[1] - m) < 1e-3)
+        self.assertTrue(np.abs(params[2] - q) < 1e-3)
+    def test_quadratic_MCMC_fit(self):
+        '''
+        Tests MCMC fit  result on dummy data
+        In order to expedite testing, a small number of tuning steps, draws, and chains are specified 
+        '''
+        #dictionary of guesses
+        init_guess = {'C_0':1.0,'C_1':0.0,'C_2':3.0} 
+        params, _ = mod.fit_quad_MCMC(quad_fit_test_df, init_guess)
+        print(params)
+        self.assertTrue(np.abs(params[0] - b) < 1e-3)
+        self.assertTrue(np.abs(params[1] - m) < 1e-3)
+        self.assertTrue(np.abs(params[2] - q) < 1e-3)
+        
+    def test_gpr_fit_compiles(self):
+        '''
+        Tests whether or not the GPR sampling model actually compiles
+        '''
+        try:
+            gpr = mod.fit_GPR(timetable_test, nosetest=True)
+            self.assertTrue(True)
+        except:
+            self.assertTrue(False)
 
 
