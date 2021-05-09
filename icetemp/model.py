@@ -37,7 +37,7 @@ def calc_linear_likelihood(data, C_0, C_1):
 def calc_quad_likelihood(data, C_0, C_1, C_2):
     """
     Calculates the likelihood based on a quadratic model given the data and parameters (m, b)
-    model: temp = C_2*depth^2 + C_1*depth + C_0 
+    model: temp = C_2*depth^2 + C_1*depth + C_0
 
     Parameters
     ----------
@@ -90,7 +90,7 @@ def fit_quad(data):
     Y = temp
     A = depth[:, np.newaxis] ** (0, 1, 2)
     C = np.diag(sigma_y ** 2)
- 
+
     C_inv = np.linalg.inv(C)
     cov_mat = np.linalg.inv(A.T @ C_inv @ A)
     params = cov_mat @ (A.T @ C_inv @ Y)
@@ -122,7 +122,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         number of draws used in MCMC (default = 2500)
         NOTE: n_draws must be >= 4 for convergence checks and > 0 in general
         If < 1, n_draws will automatically be set to the default (2500)
-    n_chains : int (> 0) 
+    n_chains : int (> 0)
         number of walkers used to sample posterior in MCMC (default = 5)
         NOTE: number of chains must be >= 2 to visualize traces and must be > 0 in general
         If < 1, n_chains will automatically be set to the default (5)
@@ -158,7 +158,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         C_1 = pm.Flat('C_1')
         C_0 = pm.Flat('C_0')
         C_2 = pm.Flat('C_2')
-        line = C_2 * depth**2 + C_1 * depth + C_0 
+        line = C_2 * depth**2 + C_1 * depth + C_0
 
         # define (Gaussian) likelihood
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
@@ -211,8 +211,10 @@ def n_polyfit_MCMC(n, data, init_guess):
 
     with pm.Model() as _:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
-        C_n = [pm.Flat('C_{}'.format(i)) for i in range(n+1)]
-        polynomial = np.sum([C_n[i] * depth**i for i in range(n+1)])
+        #C_0 = pm.Normal('C_0', mu=-50, sigma=0.1) # Uniform bounded by temps 
+        C_0 = pm.Uniform('C_0',-53,-47) # not expected to change drastically due to global warming
+        C_n = [pm.Flat('C_{}'.format(i)) for i in range(1,n+1)] # Change to uniform
+        polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
         # define likelihood
         y_obs = pm.Normal("temp_pred", mu = polynomial, sd = sigma_y, observed=temp)
@@ -220,7 +222,7 @@ def n_polyfit_MCMC(n, data, init_guess):
         # unleash the inference
         n_tuning_steps = 1500
         ndraws = 2500
-        traces = pm.sample(start=pm.find_MAP(start=init_guess), tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
+        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
         # extract parameters and uncertainty using arviz
