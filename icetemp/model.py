@@ -66,7 +66,7 @@ def fit_quad(data):
     Fits the data to a quadratic function
     Only errors on temperature are considered in this model
     Based on Hogg, Bovy, and Lang section 1 (https://arxiv.org/abs/1008.4686)
-    model: temp = q*depth^2 + m*depth + b
+    model: temp = C_2*depth^2 + C_1*depth + C_0
 
     Parameters
     ----------
@@ -76,9 +76,9 @@ def fit_quad(data):
 
     Returns
     -------
-    q, m, b (parameters, 1D array of length 3), covariance matrix (3 by 3) : floats, matrix of floats
-        parameters and covariance matrix from fit to quadratic function
-
+    params, param_errors: 1D numpy arrays of floats
+        parameter values from the model
+        standard deviations of each parameter
     """
 
     # prepare data
@@ -90,12 +90,14 @@ def fit_quad(data):
     Y = temp
     A = depth[:, np.newaxis] ** (0, 1, 2)
     C = np.diag(sigma_y ** 2)
-
-
+ 
     C_inv = np.linalg.inv(C)
-    cov = np.linalg.inv(A.T @ C_inv @ A)
-    params = cov @ (A.T @ C_inv @ Y)
-    return params, cov
+    cov_mat = np.linalg.inv(A.T @ C_inv @ A)
+    params = cov_mat @ (A.T @ C_inv @ Y)
+
+    #get stdev of parameters from covariance matrix
+    param_erros = np.sqrt(np.diag(cov))
+    return params, param_errors
 
 
 def fit_quad_MCMC(data, init_guess):
