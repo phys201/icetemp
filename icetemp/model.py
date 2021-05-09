@@ -16,7 +16,7 @@ def calc_linear_likelihood(data, C_0, C_1):
     ----------
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
-        Format described in tutotial notebook
+        Format described in tutorial notebook
     C_0, C_1 : floats
         parameter values used in calculation of likelihood
 
@@ -43,7 +43,7 @@ def calc_quad_likelihood(data, C_0, C_1, C_2):
     ----------
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
-        Format described in tutotial notebook
+        Format described in tutorial notebook
     C_0, C_1, C_2 : floats
         parameter values used in calculation of likelihood
 
@@ -72,11 +72,11 @@ def fit_quad(data):
     ----------
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
-        Format described in tutotial notebook
+        Format described in tutorial notebook
 
     Returns
     -------
-    params, param_errors: 1D numpy arrays of floats
+    params, param_errors: 1-D numpy arrays of floats
         parameter values from the model
         standard deviations of each parameter
     """
@@ -96,7 +96,7 @@ def fit_quad(data):
     params = cov_mat @ (A.T @ C_inv @ Y)
 
     #get stdev of parameters from covariance matrix
-    param_erros = np.sqrt(np.diag(cov))
+    param_errors = np.sqrt(np.diag(cov_mat))
     return params, param_errors
 
 
@@ -111,13 +111,13 @@ def fit_quad_MCMC(data, init_guess):
     ----------
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
-        Format described in tutotial notebook
+        Format described in tutorial notebook
     init_guess : dict
         dictionary containing initial values for each of the parameters in the model
 
     Returns
     -------
-    params, param_errors: 1D numpy arrays of floats
+    params, param_errors: 1-D numpy arrays of floats
         parameter values from the model
         standard deviations of each parameter
 
@@ -167,13 +167,13 @@ def n_polyfit_MCMC(n, data, init_guess):
         indicates the power of the polynomial fit
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
-        Format described in tutotial notebook
+        Format described in tutorial notebook
     init_guess : dict
         dictionary containing initial values for each of the parameters in the model
 
     Returns
     -------
-    params, param_errors: 1D numpy arrays of floats
+    params, param_errors: 1-D numpy arrays of floats
         parameter values from the model
         standard deviations of each parameter
 
@@ -309,7 +309,7 @@ def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150, 
     ----------
     timetable: pandas DataFrame
         DataFrame of data and metadata for temperatures at a certain depth over a large period of time
-        Incoporates the following columns: year, temperature, prediction_errors (error on regressions from above)
+        Incorporates the following columns: year, temperature, prediction_errors (error on regressions from above)
     pplot_post_pred_samples: bool
         If false, the posterior predictive distribution is plotted by visualizing the mean PPC values + 1-sigma std
         devs at each X-value. If true, posterior predictive distribution is plotted by visualizing samples from the
