@@ -105,7 +105,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
     model: temp = q*depth^2 + m*depth + b
-    Plots the traces in the MCMC
+    Plots the traces in the MCMC (if n_chains > 2)
 
     Parameters
     ----------
@@ -114,12 +114,18 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         Format described in tutorial notebook
     init_guess : dict
         dictionary containing initial values for each of the parameters in the model (C_0, C_1, C_2))
-    n_tuning_steps : int
+    n_tuning_steps : int (>= 0)
         number of tuning steps used in MCMC (default = 1500)
-    n_draws : int 
+        NOTE: Number of tuning steps must be >= 0
+        If < 0, n_tuning_steps will automatically be set to the default (1500)
+    n_draws : int (> 0)
         number of draws used in MCMC (default = 2500)
-    n_chains : int
+        NOTE: n_draws must be >= 4 for convergence checks and > 0 in general
+        If < 1, n_draws will automatically be set to the default (2500)
+    n_chains : int (> 0) 
         number of walkers used to sample posterior in MCMC (default = 5)
+        NOTE: number of chains must be >= 2 to visualize traces and must be > 0 in general
+        If < 1, n_chains will automatically be set to the default (5)
 
     Returns
     -------
@@ -128,6 +134,20 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         standard deviations of each parameter
 
     """
+    # error checking for MCMC-related parameters
+    # if parameters outside allowed values, set them to the default
+    if n_tuning_steps < 0:
+        print("You have entered an invalid value for n_tuning_steps (must be >= 0). Reverting to default (1500)")
+        n_tuning_steps = 1500
+    if n_draws < 1:
+        print("You have entered an invalid value for n_draws (must be >= 1). Reverting to default (2500)")
+        n_draws = 2500
+    if n_chains < 1:
+        print("You have entered an invalid value for n_chains (must be >= 1). Reverting to default (5)")
+        n_chains = 5
+
+
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
@@ -140,12 +160,14 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         C_2 = pm.Flat('C_2')
         line = C_2 * depth**2 + C_1 * depth + C_0 
 
-        # define likelihood
+        # define (Gaussian) likelihood
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
         # unleash the inference
         traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to use following arviz function
-        az.plot_trace(traces)
+        # plot traces if n_chains >= 2
+        if n_chains >= 2:
+            az.plot_trace(traces)
 
         # extract parameters and uncertainty using arviz
         params_list = []
