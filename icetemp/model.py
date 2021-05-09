@@ -147,7 +147,6 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         n_chains = 5
 
 
-
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
@@ -156,7 +155,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     with pm.Model() as _:
         # define priors for each parameter in the quadratic fit
         C_1 = pm.Flat('C_1')
-        C_0 = pm.Flat('C_0')
+        C_0 = pm.Uniform('C_0', -60, -40) # constrain to surface temps in austral summer
         C_2 = pm.Flat('C_2')
         line = C_2 * depth**2 + C_1 * depth + C_0
 
@@ -179,6 +178,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         params = np.array(params_list)
         param_errors = np.array(params_uncert)
     return params, param_errors
+
 
 def n_polyfit_MCMC(n, data, init_guess):
     """
@@ -211,7 +211,7 @@ def n_polyfit_MCMC(n, data, init_guess):
 
     with pm.Model() as _:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
-        #C_0 = pm.Normal('C_0', mu=-50, sigma=0.1) # Uniform bounded by temps 
+        #C_0 = pm.Normal('C_0', mu=-50, sigma=0.1) # Uniform bounded by temps
         C_0 = pm.Uniform('C_0',-53,-47) # not expected to change drastically due to global warming
         C_n = [pm.Flat('C_{}'.format(i)) for i in range(1,n+1)] # Change to uniform
         polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
@@ -235,28 +235,61 @@ def n_polyfit_MCMC(n, data, init_guess):
         params = np.array(params_list)
         param_errors = np.array(params_uncert)
 
+        best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
+        covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0])
+        best_fit['covariance matrix'] = covariance_matrix
+
     return params, param_errors
 
-def get_timetable(n, data, init_guess):
+
+def plot_polyfit(data, params_list):
     """
-    Fits the data to a quadratic function using pymc3
-    Errors on temperature are considered in the model
-    model: temp = q*depth^2 + m*depth + b
-    Plots the traces in the MCMC
+    Fits the data to a polynomial function from pymc3 results
 
     Parameters
     ----------
-    n: integer
-        indicates the power of the polynomial fit
     data : list with names for pandas DataFrame
         list of names of data and metadata contained in pandas DataFrame
-    init_guess : list of dicts
-        list of dictionaries containing initial values for each of the parameters in the modeli
+    params_list, param_errors_list: list with 1-D numpy arrays of floats
+        parameter values from the model
+        standard deviations of each parameter
 
         NOTE:
-        order in which lists of data and initial guesses are constructed should be the same, i.e.
+        order in which lists of data, params_list and params_errors_list are constructed should be the same, i.e.
         data = [data_2002, data_2007]
-        init_guess = [init_guess_2002, init_guess_2007]
+        params_list = [params_2002, params_2007]
+    """
+
+    # range of depth locations
+    x = np.linspace(800,2500)
+
+    for year in range(len(data)):
+        print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
+        print(params_list[year])
+
+        polynomial = np.sum([params_list[year][i] * x**i for i in range(len(params_list[year]))], axis = 0)
+        data[year].plot(x='Depth', y='Temperature', kind='scatter', yerr=0.1,color='orange')
+        plt.plot(x, polynomial, linestyle='dashed', color='blue')
+        plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(len(params_list[year]), data[year]['data_year'][0]))
+    return 0
+
+
+def get_timetable(data, params_list, params_errors_list):
+    """
+    Collects the ground level temperature from multiple datasets
+
+    Parameters
+    ----------
+    data : list with names for pandas DataFrame
+        list of names of data and metadata contained in pandas DataFrame
+    params_list, param_errors_list: list with 1-D numpy arrays of floats
+        parameter values from the model
+        standard deviations of each parameter
+
+        NOTE:
+        order in which lists of data, params_list and params_errors_list are constructed should be the same, i.e.
+        data = [data_2002, data_2007]
+        params_list = [params_2002, params_2007]
 
     Returns
     -------
@@ -265,28 +298,20 @@ def get_timetable(n, data, init_guess):
         Format described in tutotial notebook
 
     """
-    # range of depth locations
-    x = np.linspace(800,2500)
 
     year_list = []
     temp_list = []
     pred_errs_list = []
+
     for year in range(len(data)):
-        params, errors = n_polyfit_MCMC(n, data[year], init_guess[year]) # returns params in order C_0, C_1, C_2,...
-        print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
-        print(params)
 
         year_list.append(data[year]['data_year'][0])
-        temp_list.append(params[0])
-        pred_errs_list.append(errors[0])
-
-        polynomial = np.sum([params[i] * x**i for i in range(n+1)], axis = 0)
-        data[year].plot(x='Depth', y='Temperature', kind='scatter', yerr=0.1,color='orange')
-        plt.plot(x, polynomial, linestyle='dashed', color='blue')
-        plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(n, data[year]['data_year'][0]))
+        temp_list.append(params_list[year][0])
+        pred_errs_list.append(params_errors_list[year][0])
 
     timetable = pd.DataFrame({'year': year_list, 'temperature': temp_list, 'prediction_errors': pred_errs_list})
     return timetable
+
 
 def get_odds_ratio(n_M1, n_M2, data, init_guess1, init_guess2):
     """
@@ -324,7 +349,22 @@ def get_odds_ratio(n_M1, n_M2, data, init_guess1, init_guess2):
 
         # calculate odds ratio
         odds_ratio_list.append(loglikelihood1/loglikelihood2)
+        
+        """
+        max_likelihood =  np.exp(-chi_squared/2) / (2 * np.pi * uncertainty**2) ** (len(data11_1)/2)
+        curvature = np.sqrt(det(best_fit['covariance matrix'])) * (2 * np.pi) **  (n_parameters/2)
+
+        n_peaks = int((n_parameters - 1) / 2)
+        prior_background = 1 / np.ptp(data11_1['V'])
+        prior_peak_height = 1 / np.max(data11_1['V']) ** n_peaks
+        prior_peak_center = 1 / np.ptp(data11_1['f']) ** n_peaks
+        log_prior = np.log(prior_background * prior_peak_height * prior_peak_center)
+
+        return np.log(max_likelihood) + np.log(curvature) + log_prior
+        """
+
     return odds_ratio_list
+
 
 def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150, nosetest=False):
     '''
