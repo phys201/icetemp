@@ -366,7 +366,7 @@ def get_odds_ratio(n_M1, n_M2, data, init_guess1, init_guess2):
     return odds_ratio_list
 
 
-def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150, nosetest=False):
+def fit_GPR(timetable, num_forecast_years=0, plot_post_pred_samples=False, num_post_pred_samples=150, nosetest=False):
     '''
     Performs a Gaussian Process Regression to infer temperature v. time dependence
 
@@ -375,6 +375,8 @@ def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150, 
     timetable: pandas DataFrame
         DataFrame of data and metadata for temperatures at a certain depth over a large period of time
         Incorporates the following columns: year, temperature, prediction_errors (error on regressions from above)
+    num_forecast_years: int
+        Number of years ahead of the last date to forecast the temperature
     pplot_post_pred_samples: bool
         If false, the posterior predictive distribution is plotted by visualizing the mean PPC values + 1-sigma std
         devs at each X-value. If true, posterior predictive distribution is plotted by visualizing samples from the
@@ -434,8 +436,8 @@ def fit_GPR(timetable, plot_post_pred_samples=False, num_post_pred_samples=150, 
         plt.show()
 
         # predictions
-        range_x = np.max(X) - np.min(X)
-        Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + 0.2*range_x, 100)[:, None]
+        range_x = np.max(X) + num_forecast_years - np.min(X)
+        Xnew = np.linspace(np.min(X) - 0.2*range_x, np.max(X) + num_forecast_years + 0.2*range_x, 100)[:, None]
         with marginal_gp_model:
             y_pred = gp.conditional('y_pred', Xnew)
             ppc = pm.sample_posterior_predictive(traces, var_names=['y_pred'], samples=num_post_pred_samples)
