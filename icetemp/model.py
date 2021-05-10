@@ -227,6 +227,7 @@ def n_polyfit_MCMC(n, data, init_guess):
     Returns
     -------
     traces :
+    best_fit : dict 
 
     """
     # prepare data
