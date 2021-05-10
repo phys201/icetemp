@@ -211,8 +211,7 @@ def n_polyfit_MCMC(n, data, init_guess):
 
     with pm.Model() as _:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
-        C_0 = pm.Uniform('C_0',-53,-47) # not expected to change drastically due to global warming
-        #C_n = [pm.Flat('C_{}'.format(i)) for i in range(1,n+1)] # Change to uniform
+        C_0 = pm.Uniform('C_0',-52,-44) # not expected to change more than +/- 5 deg C according to base camp measurements
         C_n = [pm.Uniform('C_{}'.format(i), -60/800**i, 10/800**i) for i in range(1,n+1)]
         polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
@@ -222,7 +221,7 @@ def n_polyfit_MCMC(n, data, init_guess):
         # unleash the inference
         n_tuning_steps = 1500
         ndraws = 2500
-        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
+        traces = pm.sample(start=init_guess, init="adapt_diag", tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
         # extract parameters and uncertainty using arviz
