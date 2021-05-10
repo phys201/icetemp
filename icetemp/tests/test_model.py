@@ -27,7 +27,7 @@ quad_fit_test_df = pd.DataFrame({'Temperature': quad_temps, 'Depth': depths, 'te
 
 # generate timetable for GPR
 timetable_test = pd.DataFrame({'year': [2001, 2005, 2008, 2009], 
-    'Temperature': [-40., -39.5, -38.2, -37.], 
+    'temperature': [-40., -39.5, -38.2, -37.], 
     'prediction_errors': [0.1, 0.1, 0.1, 0.1]})
 
 # object to handle unit testing using nosetests
@@ -68,9 +68,8 @@ class TestModel(TestCase):
         Tests whether or not the GPR sampling model actually compiles
         '''
         try:
-            gpr = mod.fit_GPR(timetable_test, nosetest=True)
-            self.assertTrue(True)
+            _ = mod.fit_GPR(timetable_test, nosetest=True)
         except:
-            self.assertTrue(False)
+            self.fail("fit_GPR() raised ExceptionType unexpectedly!")
 
 
