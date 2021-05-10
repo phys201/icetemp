@@ -129,9 +129,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
 
     Returns
     -------
-    params, param_errors: 1-D numpy arrays of floats
-        parameter values from the model
-        standard deviations of each parameter
+    traces :
 
     """
     # error checking for MCMC-related parameters
@@ -168,16 +166,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         if n_chains >= 2:
             az.plot_trace(traces)
 
-        # extract parameters and uncertainty using arviz
-        params_list = []
-        params_uncert = []
-        for parameter in ['C_0', 'C_1', 'C_2']:
-            params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
-            params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
-
-        params = np.array(params_list)
-        param_errors = np.array(params_uncert)
-    return params, param_errors
+    return traces
 
 
 def n_polyfit_MCMC(n, data, init_guess):
@@ -199,9 +188,7 @@ def n_polyfit_MCMC(n, data, init_guess):
 
     Returns
     -------
-    params, param_errors: 1-D numpy arrays of floats
-        parameter values from the model
-        standard deviations of each parameter
+    traces :
 
     """
     # prepare data
@@ -224,21 +211,45 @@ def n_polyfit_MCMC(n, data, init_guess):
         traces = pm.sample(start=init_guess, init="adapt_diag", tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
         az.plot_trace(traces)
 
-        # extract parameters and uncertainty using arviz
-        params_list = []
-        params_uncert = []
-        for parameter in ['C_{}'.format(i) for i in range(n+1)]:
-            params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
-            params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
-
-        params = np.array(params_list)
-        param_errors = np.array(params_uncert)
-
         best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
         covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0])
         best_fit['covariance matrix'] = covariance_matrix
 
+    return traces, best_fit
+
+
+def get_params(n, traces):
+    """
+    Fits the data to a quadratic function using pymc3
+    Errors on temperature are considered in the model
+    model: temp = q*depth^2 + m*depth + b
+    Plots the traces in the MCMC
+
+    Parameters
+    ----------
+    n: integer
+        indicates the power of the polynomial fit
+    traces :
+
+    Returns
+    -------
+    params, param_errors: 1-D numpy arrays of floats
+        parameter values from the model
+        standard deviations of each parameter
+
+    """
+    # extract parameters and uncertainty using arviz
+    params_list = []
+    params_uncert = []
+    for parameter in ['C_{}'.format(i) for i in range(n+1)]:
+        params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
+        params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
+
+    params = np.array(params_list)
+    param_errors = np.array(params_uncert)
+
     return params, param_errors
+
 
 
 def plot_polyfit(data, params_list):
@@ -266,11 +277,11 @@ def plot_polyfit(data, params_list):
         print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
         print(params_list[year])
 
-        polynomial = np.sum([params_list[year][i] * x**i for i in range(len(params_list[year]))], axis = 0)
+        n = len(params_list[year]) - 1
+        polynomial = np.sum([params_list[year][i] * x**i for i in range(n+1)], axis = 0)
         data[year].plot(x='Depth', y='Temperature', kind='scatter', yerr=0.1,color='orange')
         plt.plot(x, polynomial, linestyle='dashed', color='blue')
-        plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(len(params_list[year]-1), data[year]['data_year'][0]))
-    return 0
+        plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(n, data[year]['data_year'][0]))
 
 
 def get_timetable(data, params_list, params_errors_list):
@@ -312,13 +323,19 @@ def get_timetable(data, params_list, params_errors_list):
     return timetable
 
 
-def get_odds_ratio(n_M1, n_M2, data, init_guess1, init_guess2):
+def get_odds_ratio(n_M1, n_M2, data, params_list1, params_list2, best_fit1, best_fit2):
     """
     Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
     Parameters
     ----------
     n_M1, n_M2: integer
         describes the highest order (n) of the polynomial from each model
+    data :
+    params_list1 :
+    params_list2 :
+    best_fit1 :
+    best_fit2 :
+
     Returns
     -------
     odds_ratio: float
@@ -336,30 +353,32 @@ def get_odds_ratio(n_M1, n_M2, data, init_guess1, init_guess2):
         # range of depth locations
         x = np.linspace(800,2500, len(temp))
 
-        params1, errors1 = n_polyfit_MCMC(n_M1, data[year], init_guess1[year]) # returns params in order C_0, C_1, C_2,...
-        params2, errors2 = n_polyfit_MCMC(n_M2, data[year], init_guess2[year]) # returns params in order C_0, C_1, C_2,...
+        mu1 = [params_list1[year][i] * x**i for i in range(n_M1+1)]
+        mu2 = [params_list2[year][i] * x**i for i in range(n_M2+1)]
 
-        mu1 = np.sum([params1[i] * x**i for i in range(n_M1+1)], axis = 0)
-        mu2 = np.sum([params2[i] * x**i for i in range(n_M2+1)], axis = 0)
+        chi_squared1 = np.sum((temp - mu1)**2 / ( temp_error ** 2), axis = 0)
+        chi_squared2 = np.sum((temp - mu2)**2 / ( temp_error ** 2), axis = 0)
 
+        max_likelihood1 =  np.exp(-chi_squared1/2) / (2 * np.pi * uncertainty**2) ** (len(data[year]])/2)
+        max_likelihood2 =  np.exp(-chi_squared1/2) / (2 * np.pi * uncertainty**2) ** (len(data[year]])/2)
+
+        curvature1 = np.sqrt(det(best_fit1['covariance matrix'])) * (2 * np.pi) **  (n_M1/2)
+        curvature2 = np.sqrt(det(best_fit2['covariance matrix'])) * (2 * np.pi) **  (n_M2/2)
+
+        prior_C0 = 1. / (-44 - -52)
+        prior_Cn_M1 = np.prod([1. / (10/800**i - -60/800**i) for i in range(n_M1)])
+        prior_Cn_M2 = np.prod([1. / (10/800**i - -60/800**i) for i in range(n_M2)])
+
+        loglikelihood1 = np.log(max_likelihood1) + np.log(curvature1) + np.log(prior_C0 * prior_Cn_M1)
+        loglikelihood2 = np.log(max_likelihood2) + np.log(curvature2) + np.log(prior_C0 * prior_Cn_M2)
+
+        """
         # calculate log likelihood
         loglikelihood1 = np.sum(np.log(1. / np.sqrt(2 * np.pi * temp_error ** 2)) - (temp - mu1)**2 / (2 * temp_error ** 2))
         loglikelihood2 = np.sum(np.log(1. / np.sqrt(2 * np.pi * temp_error ** 2)) - (temp - mu2)**2 / (2 * temp_error ** 2))
 
         # calculate odds ratio
         odds_ratio_list.append(loglikelihood1/loglikelihood2)
-
-        """
-        max_likelihood =  np.exp(-chi_squared/2) / (2 * np.pi * uncertainty**2) ** (len(data11_1)/2)
-        curvature = np.sqrt(det(best_fit['covariance matrix'])) * (2 * np.pi) **  (n_parameters/2)
-
-        n_peaks = int((n_parameters - 1) / 2)
-        prior_background = 1 / np.ptp(data11_1['V'])
-        prior_peak_height = 1 / np.max(data11_1['V']) ** n_peaks
-        prior_peak_center = 1 / np.ptp(data11_1['f']) ** n_peaks
-        log_prior = np.log(prior_background * prior_peak_height * prior_peak_center)
-
-        return np.log(max_likelihood) + np.log(curvature) + log_prior
         """
 
     return odds_ratio_list
