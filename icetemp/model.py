@@ -212,7 +212,7 @@ def n_polyfit_MCMC(n, data, init_guess):
     with pm.Model() as _:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
         C_0 = pm.Uniform('C_0',-52,-44) # not expected to change more than +/- 5 deg C according to base camp measurements
-        C_n = [pm.Uniform('C_{}'.format(i), -60/800**i, 10/800**i) for i in range(1,n+1)]
+        C_n = [pm.Uniform('C_{}'.format(i), -60/800**i, 10/2450**i) for i in range(1,n+1)]
         polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
         # define likelihood
@@ -269,7 +269,7 @@ def plot_polyfit(data, params_list):
         polynomial = np.sum([params_list[year][i] * x**i for i in range(len(params_list[year]))], axis = 0)
         data[year].plot(x='Depth', y='Temperature', kind='scatter', yerr=0.1,color='orange')
         plt.plot(x, polynomial, linestyle='dashed', color='blue')
-        plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(len(params_list[year]), data[year]['data_year'][0]))
+        plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(len(params_list[year]-1), data[year]['data_year'][0]))
     return 0
 
 
@@ -348,7 +348,7 @@ def get_odds_ratio(n_M1, n_M2, data, init_guess1, init_guess2):
 
         # calculate odds ratio
         odds_ratio_list.append(loglikelihood1/loglikelihood2)
-        
+
         """
         max_likelihood =  np.exp(-chi_squared/2) / (2 * np.pi * uncertainty**2) ** (len(data11_1)/2)
         curvature = np.sqrt(det(best_fit['covariance matrix'])) * (2 * np.pi) **  (n_parameters/2)
