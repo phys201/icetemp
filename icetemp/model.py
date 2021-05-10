@@ -211,9 +211,9 @@ def n_polyfit_MCMC(n, data, init_guess):
 
     with pm.Model() as _:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
-        #C_0 = pm.Normal('C_0', mu=-50, sigma=0.1) # Uniform bounded by temps
         C_0 = pm.Uniform('C_0',-53,-47) # not expected to change drastically due to global warming
-        C_n = [pm.Flat('C_{}'.format(i)) for i in range(1,n+1)] # Change to uniform
+        #C_n = [pm.Flat('C_{}'.format(i)) for i in range(1,n+1)] # Change to uniform
+        C_n = [pm.Uniform('C_{}'.format(i), -60/800**i, 10/800**i) for i in range(1,n+1)]
         polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
         # define likelihood
