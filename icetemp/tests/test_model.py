@@ -52,16 +52,15 @@ class TestModel(TestCase):
         self.assertTrue(np.abs(params[2] - q) < 1e-3)
     def test_quadratic_MCMC_fit(self):
         '''
-        Tests MCMC fit  result on dummy data
-        In order to expedite testing, a small number of tuning steps, draws, and chains are specified 
+        Tests whether or not the pymc3 model in fit_quad_MCMC compiles 
+        Does not perform inference/sampling in order to save time on tests 
         '''
         #dictionary of guesses
         init_guess = {'C_0':1.0,'C_1':0.0,'C_2':3.0} 
-        params, _ = mod.fit_quad_MCMC(quad_fit_test_df, init_guess)
-        print(params)
-        self.assertTrue(np.abs(params[0] - b) < 1e-3)
-        self.assertTrue(np.abs(params[1] - m) < 1e-3)
-        self.assertTrue(np.abs(params[2] - q) < 1e-3)
+        try:
+            _ = mod.fit_quad_MCMC(quad_fit_test_df, init_guess, nosetest=True)
+        except:
+            self.fail("fit_quad_MCMC() raised ExceptionType unexpectedly!")
         
     def test_gpr_fit_compiles(self):
         '''

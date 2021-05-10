@@ -138,11 +138,11 @@ def fit_quad(data):
     return params, cov_mat
 
 
-def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 5):
+def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 5, nosetest=False):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
-    model: temp = q*depth^2 + m*depth + b
+    model: temp = C_2*depth^2 + C_1*depth + C_0 
     Plots the traces in the MCMC (if n_chains > 2)
 
     Parameters
@@ -167,7 +167,8 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
 
     Returns
     -------
-    traces :
+    traces : pymc3 MultiTrace object
+        Traces generated from MCMC sampling
 
     """
     # error checking for MCMC-related parameters
@@ -188,7 +189,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     temp = data['Temperature'].values
     sigma_y = data['temp_errors'].values
 
-    with pm.Model() as _:
+    with pm.Model() as quad:
         # define priors for each parameter in the quadratic fit
         C_1 = pm.Flat('C_1')
         C_0 = pm.Uniform('C_0', -60, -40) # constrain to surface temps in austral summer
@@ -198,11 +199,16 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         # define (Gaussian) likelihood
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
-        # unleash the inference
-        traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to use following arviz function
-        # plot traces if n_chains >= 2
-        if n_chains >= 2:
-            az.plot_trace(traces)
+    # if a test, do not sample, just return
+    if nosetest:
+        return 
+    else:
+        with quad:
+            # unleash the inference
+            traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to use following arviz function
+            # plot traces if n_chains >= 2
+            if n_chains >= 2:
+                az.plot_trace(traces)
 
     return traces
 
