@@ -61,7 +61,19 @@ class TestModel(TestCase):
             _ = mod.fit_quad_MCMC(quad_fit_test_df, init_guess, nosetest=True)
         except:
             self.fail("fit_quad_MCMC() raised ExceptionType unexpectedly!")
-        
+    def test_n_polyfit_MCMC(self):
+        '''
+        Tests whether or not the pymc3 model in n_polyfit_MCMC compiles for polynomials of degree 1 through 10
+        Does not perform inference/sampling in order to save time on tests
+        '''
+        for i in range(2, 12):
+            param_names = ['C_{}'.format(j) for j in range(i)]
+            init_guess = {param: {0.0} for param in param_names}
+            try: 
+                _ = mod.n_polyfit_MCMC(i, quad_fit_test_df, init_guess, nosetest=True)
+            except:
+                self.fail("n_polyfit_MCMC() raised ExceptionType unexpectedly with n = {}!".format(i - 1))
+
     def test_gpr_fit_compiles(self):
         '''
         Tests whether or not the GPR sampling model actually compiles

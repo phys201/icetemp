@@ -287,15 +287,20 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
     if not nosetest:
         with poly_model:
             # unleash the inference
-            traces = pm.sample(init="adapt_diag", tune=n_tuning_steps, draws=n_draws, chains=4) # need at least two chains to use following arviz function
+            traces = pm.sample(init="adapt_diag", tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to plot traces
             #az.plot_pair(traces, divergences=True)
-            az.plot_trace(traces)
+
+            if n_chains >= 2:
+                az.plot_trace(traces)
             
             best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
             covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0])
             best_fit['covariance matrix'] = covariance_matrix
 
-    return traces, best_fit if not nosetest else None 
+    if not nosetest:
+        return traces, best_fit
+    else:
+        return None 
 
 
 def get_params(n, traces):
