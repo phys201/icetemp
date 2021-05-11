@@ -103,7 +103,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
-    model: temp = C_2*depth^2 + C_1*depth + C_0 — flat prior on C_1 & C_2, uniform prior on C_0 
+    model: temp = C_2*depth^2 + C_1*depth + C_0 — flat prior on C_1 & C_2, uniform prior on C_0
     Plots the traces in the MCMC (if n_chains > 2)
 
     Parameters
@@ -134,7 +134,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     traces : pymc3 MultiTrace object
         Traces generated from MCMC sampling
 
-    NOTE: when testing, None is returned, as no sampling/inference is performed 
+    NOTE: when testing, None is returned, as no sampling/inference is performed
 
     """
     # error checking for MCMC-related parameters
@@ -253,14 +253,15 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
 
             if n_chains >= 2:
                 az.plot_trace(traces)
-            
+
             best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
-            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0])
+            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/1) #sigma = 1
             best_fit['covariance matrix'] = covariance_matrix
 
     return (traces, best_fit) if not nosetest else None
 
-def get_params(n, traces):
+
+def get_params(n, traces, best_fit):
     """
     Helper function to extract parameters from fit to polynomial of degree n using pymc3 traces
 
@@ -268,7 +269,7 @@ def get_params(n, traces):
     ----------
     n: integer
         indicates the power of the polynomial fit
-    traces : pymc3 MultiTrace object 
+    traces : pymc3 MultiTrace object
         Traces generated from MCMC sampling
 
     Returns
@@ -279,20 +280,28 @@ def get_params(n, traces):
 
     """
     # extract parameters and uncertainty using arviz
+
     params_list = []
     params_uncert = []
+    best_fit_list = []
+    best_fit_errors_list = []
     for parameter in ['C_{}'.format(i) for i in range(n+1)]:
         params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
         params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
+        best_fit_list.append(best_fit[parameter])
+        error = np.sqrt(best_fit['covariance matrix'][0][0]) ##fix me
+        best_fit_errors_list.append(error)
 
+    fit_vals = np.array(best_fit_list)
+    fit_errors = np.array(best_fit_errors_list)
     params = np.array(params_list)
     param_errors = np.array(params_uncert)
 
-    return params, param_errors
+    return params, param_errors, fit_vals, fit_errors
 
 
 
-def plot_polyfit(data, params_list):
+def plot_polyfit(data, best_fit_list):
     """
     Helper function which fits the data to a polynomial function from pymc3 results
 
@@ -313,18 +322,19 @@ def plot_polyfit(data, params_list):
     # range of depth locations
     x = np.linspace(800,2500)
 
+
     for year in range(len(data)):
         print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
-        print(params_list[year])
+        print(best_fit_list[year])
 
-        n = len(params_list[year])
-        polynomial = np.sum([params_list[year][i] * x**i for i in range(n)], axis = 0)
+        n = len(best_fit_list[year])
+        polynomial = np.sum([best_fit_list[year][i] * x**i for i in range(n)], axis = 0)
         data[year].plot(x='Depth', y='Temperature', kind='scatter', yerr=0.1,color='orange')
         plt.plot(x, polynomial, linestyle='dashed', color='blue')
         plt.title(r'Real data with polynomial [$x^{}$] fit (parameters from MCMC) for {}'.format(n-1, data[year]['data_year'][0]))
 
 
-def get_timetable(data, params_list, params_errors_list):
+def get_timetable(data, best_fit_list, best_fit_errors_list):
     """
     Collects the ground level temperature from multiple datasets
 
@@ -356,18 +366,18 @@ def get_timetable(data, params_list, params_errors_list):
     for year in range(len(data)):
 
         year_list.append(data[year]['data_year'][0])
-        temp_list.append(params_list[year][0])
-        pred_errs_list.append(params_errors_list[year][0])
+        temp_list.append(best_fit_list[year][0])
+        pred_errs_list.append(best_fit_errors_list[year][0])
 
     timetable = pd.DataFrame({'year': year_list, 'temperature': temp_list, 'prediction_errors': pred_errs_list})
     return timetable
 
 
-def get_odds_ratio(n_M1, n_M2, data, params_list1, params_list2, best_fit1, best_fit2):
+def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
     """
-    Computes the odds ratio between two models given the data, degrees of polynomial fits, 
+    Computes the odds ratio between two models given the data, degrees of polynomial fits,
     best-fit parameters, and covariance matrices
-    
+
     Parameters
     ----------
     n_M1, n_M2: integer
@@ -394,37 +404,34 @@ def get_odds_ratio(n_M1, n_M2, data, params_list1, params_list2, best_fit1, best
 
         # range of depth locations
         x = data[year]['Depth'].values
-        
+        x.sort()
+
         #makes sure the temp is sorted to get correct residuals
         temp.sort()
-        
-        mu1 = np.sum([params_list1[year][i] * x**i for i in range(n_M1+1)], axis = 0)
-        mu2 = np.sum([params_list2[year][i] * x**i for i in range(n_M2+1)], axis = 0)
-        
+
+        coeff1 = [best_fit1['C_{}'.format(i)] for i in range(n_M1+1)]
+        coeff2 = [best_fit2['C_{}'.format(i)] for i in range(n_M2+1)]
+
+        mu1 = np.sum([coeff1[i] * x**i for i in range(n_M1+1)], axis = 0)
+        mu2 = np.sum([coeff2[i] * x**i for i in range(n_M2+1)], axis = 0)
+
         chi_squared1 = np.sum((temp - mu1)**2 / ( temp_error[0] ** 2))
         chi_squared2 = np.sum((temp - mu2)**2 / ( temp_error[0] ** 2))
-        
+
         max_likelihood1 =  (1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) * np.exp(- chi_squared1/2)
         max_likelihood2 =  (1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) * np.exp(- chi_squared2/2)
-        print('max_likelihood1', max_likelihood1)
-        print('max_likelihood2', max_likelihood2)
-        
-        max_loglikelihood1 =  np.log(1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) - chi_squared1/2
-        max_loglikelihood2 =  np.log(1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) - chi_squared2/2
-        print('max_loglikelihood1', max_loglikelihood1)
-        print('max_loglikelihood2', max_loglikelihood2)
-        
+
         curvature1 = np.sqrt(np.linalg.det(best_fit1['covariance matrix'])) * (2 * np.pi) **  (n_M1/2)
         curvature2 = np.sqrt(np.linalg.det(best_fit2['covariance matrix'])) * (2 * np.pi) **  (n_M2/2)
-        
+
         prior_C0 = 1. / (-44 - -52)
         prior_Cn_M1 = np.prod([1. / (10/800**i - -60/800**i) for i in range(n_M1)])
         prior_Cn_M2 = np.prod([1. / (10/800**i - -60/800**i) for i in range(n_M2)])
 
-        loglikelihood1 = max_loglikelihood1 + np.log(curvature1) + np.log(prior_C0 * prior_Cn_M1)
-        loglikelihood2 = max_loglikelihood2 + np.log(curvature2) + np.log(prior_C0 * prior_Cn_M2)
+        likelihood1 = max_likelihood1 * curvature1 * prior_C0 * prior_Cn_M1
+        likelihood2 = max_likelihood2 * curvature2 * prior_C0 * prior_Cn_M2
 
-        odds_ratio_list.append(np.exp(loglikelihood1 - loglikelihood2))
+        odds_ratio_list.append(likelihood1/likelihood2)
 
     return odds_ratio_list
 
