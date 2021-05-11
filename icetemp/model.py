@@ -429,7 +429,8 @@ def get_odds_ratio(n_M1, n_M2, data, params_list1, params_list2, best_fit1, best
     return odds_ratio_list
 
 
-def fit_GPR(timetable, num_forecast_years=0, plot_post_pred_samples=False, num_post_pred_samples=150, nosetest=False):
+def fit_GPR(timetable, num_forecast_years=0, linear_mean_func=False, plot_post_pred_samples=False, 
+            num_post_pred_samples=150, nosetest=False):
     '''
     Performs a Gaussian Process Regression to infer temperature v. time dependence
 
@@ -440,6 +441,9 @@ def fit_GPR(timetable, num_forecast_years=0, plot_post_pred_samples=False, num_p
         Incorporates the following columns: year, temperature, prediction_errors (error on regressions from above)
     num_forecast_years: int
         Number of years ahead of the last date to forecast the temperature
+    linear_mean_func: bool
+        If True, uses a linear mean function on the gp fit. If False, uses a constant mean function. Constant mean function might be
+        preferred in the case of not a lot of data.
     pplot_post_pred_samples: bool
         If false, the posterior predictive distribution is plotted by visualizing the mean PPC values + 1-sigma std
         devs at each X-value. If true, posterior predictive distribution is plotted by visualizing samples from the
@@ -478,7 +482,13 @@ def fit_GPR(timetable, num_forecast_years=0, plot_post_pred_samples=False, num_p
 
         # Specify the mean and covariance functions
         cov_func = pm.gp.cov.ExpQuad(1, ls=l)
-        mean_func = pm.gp.mean.Constant(mu)
+        if linear_mean_func: # linear mean function
+            #m = pm.Uniform('m', -1.e2, 1.e2)
+            #b = pm.Uniform('b', -1.e5, 1.e5)
+            mean_func = pm.gp.mean.Linear(coeffs=0.4, intercept=-800.)
+
+        else: # otherwise constant mean function
+            mean_func = pm.gp.mean.Constant(mu)
 
         # Specify the GP.
         gp = pm.gp.Marginal(cov_func=a*cov_func, mean_func=mean_func)
