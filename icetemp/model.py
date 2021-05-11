@@ -155,19 +155,21 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     temp = data['Temperature'].values
     sigma_y = data['temp_errors'].values
 
-    with pm.Model() as quad:
+    # define degree of polynomial
+    n = 2 # for quadratic
+
+    with pm.Model() as quad_model:
         # define priors for each parameter in the quadratic fit
-        C_1 = pm.Flat('C_1')
         C_0 = pm.Uniform('C_0', -55, -43) # constrain based on surface temps in austral summer
-        C_2 = pm.Flat('C_2')
-        line = C_2 * depth**2 + C_1 * depth + C_0
+        C_n = [pm.Uniform('C_{}'.format(i), -60/800**i, 10/800**i) for i in range(1, n+1)]
+        line = C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
         # define (Gaussian) likelihood
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
     # if a test, do not sample, just return
     if not nosetest:
-        with quad:
+        with quad_model:
             # unleash the inference
             traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to use following arviz function
             # plot traces if n_chains >= 2
