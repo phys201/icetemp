@@ -32,6 +32,10 @@ timetable_test = pd.DataFrame({'year': [2001, 2005, 2008, 2009],
 
 # object to handle unit testing using nosetests
 class TestModel(TestCase):
+    # testing helper functions
+    #def test_get_params(self):
+
+    # testing non-helper functions
     def test_linear_likelihood(self):
         '''
         Computes and tests result of linear likelihood fit of the random test data
