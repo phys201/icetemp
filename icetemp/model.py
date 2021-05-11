@@ -138,7 +138,7 @@ def fit_quad(data):
     return params, cov_mat
 
 
-def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 5, nosetest=False):
+def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 4, nosetest=False):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
@@ -163,12 +163,17 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     n_chains : int (> 0)
         number of walkers used to sample posterior in MCMC (default = 5)
         NOTE: number of chains must be >= 2 to visualize traces and must be > 0 in general
-        If < 1, n_chains will automatically be set to the default (5)
+        If < 1, n_chains will automatically be set to the default (4)
+    nosetest : bool
+        bool that specifies whether or not a test is being conducted
+        if testing is being run, then sampling will not be performed
 
     Returns
     -------
     traces : pymc3 MultiTrace object
         Traces generated from MCMC sampling
+
+    NOTE: when testing, None is returned, as no sampling/inference is performed 
 
     """
     # error checking for MCMC-related parameters
@@ -180,8 +185,8 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         print("You have entered an invalid value for n_draws (must be >= 1). Reverting to default (2500)")
         n_draws = 2500
     if n_chains < 1:
-        print("You have entered an invalid value for n_chains (must be >= 1). Reverting to default (5)")
-        n_chains = 5
+        print("You have entered an invalid value for n_chains (must be >= 1). Reverting to default (4)")
+        n_chains = 4
 
 
     # prepare data
@@ -192,7 +197,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     with pm.Model() as quad:
         # define priors for each parameter in the quadratic fit
         C_1 = pm.Flat('C_1')
-        C_0 = pm.Uniform('C_0', -60, -40) # constrain to surface temps in austral summer
+        C_0 = pm.Uniform('C_0', -55, -43) # constrain based on surface temps in austral summer
         C_2 = pm.Flat('C_2')
         line = C_2 * depth**2 + C_1 * depth + C_0
 
@@ -211,69 +216,98 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     return traces if not nosetest else None
 
 
-def n_polyfit_MCMC(n, data, init_guess):
+def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 4, nosetest=False):
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
-    model: temp = q*depth^2 + m*depth + b
-    Plots the traces in the MCMC
+    model: temp = C_2*depth^2 + C_1*depth + C_0 
+    Plots the traces in the MCMC (if n_chains > 2)
 
     Parameters
     ----------
-    n: integer
-        indicates the power of the polynomial fit
     data : pandas DataFrame
         data and metadata contained in pandas DataFrame
         Format described in tutorial notebook
     init_guess : dict
-        dictionary containing initial values for each of the parameters in the model
+        dictionary containing initial values for each of the parameters in the model (C_0, C_1, C_2))
+    n_tuning_steps : int (>= 0)
+        number of tuning steps used in MCMC (default = 1500)
+        NOTE: Number of tuning steps must be >= 0
+        If < 0, n_tuning_steps will automatically be set to the default (1500)
+    n_draws : int (> 0)
+        number of draws used in MCMC (default = 2500)
+        NOTE: n_draws must be >= 4 for convergence checks and > 0 in general
+        If < 1, n_draws will automatically be set to the default (2500)
+    n_chains : int (> 0)
+        number of walkers used to sample posterior in MCMC (default = 5)
+        NOTE: number of chains must be >= 2 to visualize traces and must be > 0 in general
+        If < 1, n_chains will automatically be set to the default (4)
+    nosetest : bool
+        bool that specifies whether or not a test is being conducted
+        if testing is being run, then sampling will not be performed
 
     Returns
     -------
-    traces :
-    best_fit : dict 
+    traces : pymc3 MultiTrace object
+        Traces generated from MCMC sampling
+    best_fit : dict
+        dictionary containing best-fit parameters and covariance matrix
+
+    NOTE: when testing, None is returned, as no sampling/inference is performed
 
     """
+    # error checking for MCMC-related parameters
+    # if parameters outside allowed values, set them to the default
+    if n_tuning_steps < 0:
+        print("You have entered an invalid value for n_tuning_steps (must be >= 0). Reverting to default (1500)")
+        n_tuning_steps = 1500
+    if n_draws < 1:
+        print("You have entered an invalid value for n_draws (must be >= 1). Reverting to default (2500)")
+        n_draws = 2500
+    if n_chains < 1:
+        print("You have entered an invalid value for n_chains (must be >= 1). Reverting to default (4)")
+        n_chains = 4
+
+
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
     sigma_y = data['temp_errors'].values
 
-    with pm.Model() as _:
+    with pm.Model() as poly_model:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
-        C_0 = pm.Uniform('C_0',-70,-30) # not expected to change more than +/- 5 deg C according to base camp measurements
+        C_0 = pm.Uniform('C_0',-55,-43) # not expected to change more than +/- 5 deg C according to base camp measurements
         C_n = [pm.Uniform('C_{}'.format(i), -60/800**i, 10/800**i) for i in range(1,n+1)]
         polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
         # define likelihood
         y_obs = pm.Normal("temp_pred", mu = polynomial, sd = 1, observed=temp)
 
-        # unleash the inference
-        n_tuning_steps = 1500
-        ndraws = 2500
-        traces = pm.sample(init="adapt_diag", tune=n_tuning_steps, draws=ndraws, chains=4) # need at least two chains to use following arviz function
-        #az.plot_pair(traces, divergences=True)
-        az.plot_trace(traces)
-        
-        best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
-        covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0])
-        best_fit['covariance matrix'] = covariance_matrix
+    if not nosetest:
+        with poly_model:
+            # unleash the inference
+            traces = pm.sample(init="adapt_diag", tune=n_tuning_steps, draws=n_draws, chains=4) # need at least two chains to use following arviz function
+            #az.plot_pair(traces, divergences=True)
+            az.plot_trace(traces)
+            
+            best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
+            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0])
+            best_fit['covariance matrix'] = covariance_matrix
 
-    return traces, best_fit
+    return traces, best_fit if not nosetest else None 
 
 
 def get_params(n, traces):
     """
-    Fits the data to a quadratic function using pymc3
-    Errors on temperature are considered in the model
-    model: temp = q*depth^2 + m*depth + b
-    Plots the traces in the MCMC
+    Extract parameters from fit to polynomial of degree n using pymc3 traces
 
     Parameters
     ----------
     n: integer
         indicates the power of the polynomial fit
-    traces :
+    traces : pymc3 MultiTrace object 
+        Traces generated from MCMC sampling
 
     Returns
     -------
