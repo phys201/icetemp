@@ -103,7 +103,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     """
     Fits the data to a quadratic function using pymc3
     Errors on temperature are considered in the model
-    model: temp = C_2*depth^2 + C_1*depth + C_0 
+    model: temp = C_2*depth^2 + C_1*depth + C_0 — flat prior on C_1 & C_2, uniform prior on C_0 
     Plots the traces in the MCMC (if n_chains > 2)
 
     Parameters
@@ -179,9 +179,9 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
 
 def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 4, nosetest=False):
     """
-    Fits the data to a quadratic function using pymc3
+    Fits the data to a polynomial function of degree n  using pymc3
     Errors on temperature are considered in the model
-    model: temp = C_2*depth^2 + C_1*depth + C_0 
+    model: temp = C_0 + C_1 * depth + C_2 * depth ^2 + ... + C_n * depth^n — uniform priors on all parameters bounded by Antarctic ice temps
     Plots the traces in the MCMC (if n_chains > 2)
 
     Parameters
@@ -262,7 +262,7 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
 
 def get_params(n, traces):
     """
-    Extract parameters from fit to polynomial of degree n using pymc3 traces
+    Helper function to extract parameters from fit to polynomial of degree n using pymc3 traces
 
     Parameters
     ----------
@@ -294,7 +294,7 @@ def get_params(n, traces):
 
 def plot_polyfit(data, params_list):
     """
-    Fits the data to a polynomial function from pymc3 results
+    Helper function which fits the data to a polynomial function from pymc3 results
 
     Parameters
     ----------
@@ -365,7 +365,9 @@ def get_timetable(data, params_list, params_errors_list):
 
 def get_odds_ratio(n_M1, n_M2, data, params_list1, params_list2, best_fit1, best_fit2):
     """
-    Computes the odds ratio between two models based on the normal distribution of the ground level temperature.
+    Computes the odds ratio between two models given the data, degrees of polynomial fits, 
+    best-fit parameters, and covariance matrices
+    
     Parameters
     ----------
     n_M1, n_M2: integer
@@ -379,7 +381,7 @@ def get_odds_ratio(n_M1, n_M2, data, params_list1, params_list2, best_fit1, best
     Returns
     -------
     odds_ratio: float
-        Determines a favorable model out of the two models.
+        Odds ratio in Bayesian model comparison
     """
     odds_ratio_list = []
 
