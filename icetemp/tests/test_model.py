@@ -33,7 +33,17 @@ timetable_test = pd.DataFrame({'year': [2001, 2005, 2008, 2009],
 # object to handle unit testing using nosetests
 class TestModel(TestCase):
     # testing helper functions
-    #def test_get_params(self):
+    def test_input_get_timetable(self):
+        '''
+        Give get_timetable() invalid input and make sure exception is thrown
+        '''
+        # define data to be wrong type
+        data = []  # list of wrong type (ints instead of pandas dataframe)
+        params_list = []
+        params_errors_list = []
+
+        self.assertRaises(TypeError, mod.get_timetable, data, params_list, params_errors_list)
+        # now make params_list wrong type (list of strings)
 
     # testing non-helper functions
     def test_linear_likelihood(self):

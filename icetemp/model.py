@@ -311,7 +311,8 @@ def plot_polyfit(data, params_list):
     """
 
     # range of depth locations
-    x = np.linspace(800,2500)
+    x = data['Depths'].values
+    x.sort()
 
     for year in range(len(data)):
         print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
@@ -348,7 +349,13 @@ def get_timetable(data, params_list, params_errors_list):
         Format described in tutotial notebook
 
     """
+    # error checking
+    if not all(isinstance(entries, pd.DataFrame) for entries in data):
+        print("data is not the right type!")
+        raise TypeError
+        
 
+    # define lists used in calculation
     year_list = []
     temp_list = []
     pred_errs_list = []
