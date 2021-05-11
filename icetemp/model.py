@@ -243,7 +243,7 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
         polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
         # define likelihood
-        y_obs = pm.Normal("temp_pred", mu = polynomial, sd = 1, observed=temp)
+        y_obs = pm.Normal("temp_pred", mu = polynomial, sd = sigma_y, observed=temp)
 
     if not nosetest:
         with poly_model:
@@ -255,7 +255,7 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
                 az.plot_trace(traces)
 
             best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
-            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/1) #sigma = 1
+            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0]) 
             best_fit['covariance matrix'] = covariance_matrix
 
     return (traces, best_fit) if not nosetest else None
