@@ -160,7 +160,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
 
     with pm.Model() as quad_model:
         # define priors for each parameter in the quadratic fit
-        C_0 = pm.Uniform('C_0', -55, -43) # constrain based on surface temps in austral summer
+        C_0 = pm.Uniform('C_0', -60, -40) # constrain based on surface temps in austral summer
         C_n = [pm.Uniform('C_{}'.format(i), -60/800**i, 10/800**i) for i in range(1, n+1)]
         line = C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
@@ -242,12 +242,13 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
 
     with pm.Model() as poly_model:
         # define priors for each parameter in the polynomial fit (e.g C_0 + C_1*x + C_2*x^2 + ...)
-        C_0 = pm.Uniform('C_0',-55,-43) # not expected to change more than +/- 5 deg C according to base camp measurements
+        C_0 = pm.Uniform('C_0',-60,-40) # not expected to change more than +/- 5 deg C according to base camp measurements
         C_n = [pm.Uniform('C_{}'.format(i), -60/800**i, 10/800**i) for i in range(1,n+1)]
         polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
         # define likelihood
-        y_obs = pm.Normal("temp_pred", mu = polynomial, sd = 1, observed=temp)
+        sigma_T = 1.
+        y_obs = pm.Normal("temp_pred", mu = polynomial, sd = sigma_T, observed=temp)
 
     if not nosetest:
         with poly_model:
@@ -262,7 +263,7 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
                 traces = 0
 
             best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
-            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/1)
+            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0])
             best_fit['covariance matrix'] = covariance_matrix
 
     return (traces, best_fit) if not nosetest else None
@@ -299,7 +300,7 @@ def get_params(n, input_params, input_traces = False):
         params_list = []
         params_uncert = []
         for parameter in ['C_{}'.format(i) for i in range(n+1)]:
-            params_list.append(az.summary(input, round_to=9)['mean'][parameter])
+            params_list.append(az.summary(input_params, round_to=9)['mean'][parameter])
             params_uncert.append(az.summary(input_params, round_to=9)['sd'][parameter])
         params = np.array(params_list)
         params_errors = np.array(params_uncert)
@@ -447,20 +448,26 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
         chi_squared1 = np.sum((temp - mu1)**2 / ( temp_error[0] ** 2))
         chi_squared2 = np.sum((temp - mu2)**2 / ( temp_error[0] ** 2))
 
+        max_likelihood1 = 1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2) * np.exp(-chi_squared1/2)
+        max_likelihood2 = 1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2) * np.exp(-chi_squared2/2)
+        print("Likelihood 1: ", max_likelihood1)
+        print("Likelihood 2: ", max_likelihood2)
+
         max_loglikelihood1 =  np.log(1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) - chi_squared1/2
         max_loglikelihood2 =  np.log(1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) - chi_squared2/2
 
         curvature1 = np.sqrt(np.linalg.det(best_fit1['covariance matrix'])) * (2 * np.pi) **  (n_M1/2)
         curvature2 = np.sqrt(np.linalg.det(best_fit2['covariance matrix'])) * (2 * np.pi) **  (n_M2/2)
 
-        prior_C0 = 1. / (-44 - -52)
+        prior_C0 = 1. / (-40 - -60)
         prior_Cn_M1 = np.prod([1. / (10/800**i - -60/800**i) for i in range(n_M1)])
         prior_Cn_M2 = np.prod([1. / (10/800**i - -60/800**i) for i in range(n_M2)])
 
-        loglikelihood1 = max_loglikelihood1 * np.log(curvature1) * np.log(prior_C0 * prior_Cn_M1)
-        loglikelihood2 = max_loglikelihood2 * np.log(curvature2) * np.log(prior_C0 * prior_Cn_M2)
+        loglikelihood1 = max_loglikelihood1 + np.log(curvature1) + np.log(prior_C0 * prior_Cn_M1)
+        loglikelihood2 = max_loglikelihood2 + np.log(curvature2) + np.log(prior_C0 * prior_Cn_M2)
 
         odds_ratio_list.append(np.exp(loglikelihood1 - loglikelihood2))
+        
 
     return odds_ratio_list
 
