@@ -258,11 +258,7 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
             covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0])
             best_fit['covariance matrix'] = covariance_matrix
 
-    if not nosetest:
-        return traces, best_fit
-    else:
-        return None 
-
+    return (traces, best_fit) if not nosetest else None
 
 def get_params(n, traces):
     """
