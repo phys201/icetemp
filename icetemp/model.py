@@ -177,7 +177,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     return traces if not nosetest else None
 
 
-def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 4, nosetest=False):
+def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_chains = 4, nosetest=False, compute_traces = False):
     """
     Fits the data to a polynomial function of degree n  using pymc3
     Errors on temperature are considered in the model
@@ -206,6 +206,8 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
     nosetest : bool
         bool that specifies whether or not a test is being conducted
         if testing is being run, then sampling will not be performed
+    compute_traces : bool
+        bool that indicates wheter or not to compute the traces
 
     Returns
     -------
@@ -243,19 +245,22 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
         polynomial =  C_0 + np.sum([C_n[i] * depth**(i+1) for i in range(n)])
 
         # define likelihood
-        y_obs = pm.Normal("temp_pred", mu = polynomial, sd = sigma_y, observed=temp)
+        y_obs = pm.Normal("temp_pred", mu = polynomial, sd = 1, observed=temp)
 
     if not nosetest:
         with poly_model:
             # unleash the inference
-            traces = pm.sample(init="adapt_diag", tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to plot traces
-            #az.plot_pair(traces, divergences=True)
+            if compute_traces == True:
+                traces = pm.sample(init="adapt_diag", tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to plot traces
+                #az.plot_pair(traces, divergences=True)
 
-            if n_chains >= 2:
-                az.plot_trace(traces)
+                if n_chains >= 2:
+                    az.plot_trace(traces)
+            else:
+                traces = 0
 
             best_fit, scipy_output = pm.find_MAP(start = init_guess, return_raw=True)
-            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/sigma_y[0]) 
+            covariance_matrix = np.flip(scipy_output.hess_inv.todense()/1)
             best_fit['covariance matrix'] = covariance_matrix
 
     return (traces, best_fit) if not nosetest else None
@@ -285,6 +290,7 @@ def get_params(n, input_params, input_traces = False):
         standard deviations of each parameter
 
     """
+
     # extract parameters and uncertainty using arviz
     if input_traces == True:
 
@@ -294,7 +300,8 @@ def get_params(n, input_params, input_traces = False):
             params_list.append(az.summary(input, round_to=9)['mean'][parameter])
             params_uncert.append(az.summary(input_params, round_to=9)['sd'][parameter])
         params = np.array(params_list)
-        param_errors = np.array(params_uncert)
+        params_errors = np.array(params_uncert)
+
 
     else:
         best_fit_list = []
@@ -313,7 +320,7 @@ def get_params(n, input_params, input_traces = False):
         params_errors = np.array(best_fit_errors_list)
 
 
-    return params, param_errors
+    return params, params_errors
 
 
 
