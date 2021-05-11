@@ -261,7 +261,7 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
     return (traces, best_fit) if not nosetest else None
 
 
-def get_params(n, traces, best_fit):
+def get_params(n, input_params, input_traces = False):
     """
     Helper function to extract parameters from fit to polynomial of degree n using pymc3 traces
 
@@ -269,8 +269,14 @@ def get_params(n, traces, best_fit):
     ----------
     n: integer
         indicates the power of the polynomial fit
-    traces : pymc3 MultiTrace object
-        Traces generated from MCMC sampling
+    input_params : can be either best_fit or traces
+
+        best_fit : dict with 1-D numpy arrays of floats
+            parameter values from the model and covariance matrix
+        traces : pymc3 MultiTrace object
+            Traces generated from MCMC sampling
+    input_traces : bool
+        indicates whether input is best_fit or traces
 
     Returns
     -------
@@ -280,24 +286,34 @@ def get_params(n, traces, best_fit):
 
     """
     # extract parameters and uncertainty using arviz
+    if input_traces == True:
 
-    params_list = []
-    params_uncert = []
-    best_fit_list = []
-    best_fit_errors_list = []
-    for parameter in ['C_{}'.format(i) for i in range(n+1)]:
-        params_list.append(az.summary(traces, round_to=9)['mean'][parameter])
-        params_uncert.append(az.summary(traces, round_to=9)['sd'][parameter])
-        best_fit_list.append(best_fit[parameter])
-        error = np.sqrt(best_fit['covariance matrix'][0][0]) ##fix me
-        best_fit_errors_list.append(error)
+        params_list = []
+        params_uncert = []
+        for parameter in ['C_{}'.format(i) for i in range(n+1)]:
+            params_list.append(az.summary(input, round_to=9)['mean'][parameter])
+            params_uncert.append(az.summary(input_params, round_to=9)['sd'][parameter])
+        params = np.array(params_list)
+        param_errors = np.array(params_uncert)
 
-    fit_vals = np.array(best_fit_list)
-    fit_errors = np.array(best_fit_errors_list)
-    params = np.array(params_list)
-    param_errors = np.array(params_uncert)
+    else:
+        best_fit_list = []
+        best_fit_errors_list = []
 
-    return params, param_errors, fit_vals, fit_errors
+        parameters = []
+        errors = {}
+        for i in range(n+1):
+            parameters = parameters + ['C_{}'.format(i)]
+            errors['C_{}'.format(i)]= np.sqrt(input_params['covariance matrix'][i][i])
+        for parameter in parameters:
+            best_fit_list.append(input_params[parameter])
+            best_fit_errors_list.append(errors[parameter])
+
+        params = np.array(best_fit_list)
+        params_errors = np.array(best_fit_errors_list)
+
+
+    return params, param_errors
 
 
 
@@ -309,9 +325,8 @@ def plot_polyfit(data, best_fit_list):
     ----------
     data : list with names for pandas DataFrame
         list of names of data and metadata contained in pandas DataFrame
-    params_list, param_errors_list: list with 1-D numpy arrays of floats
+    best_fit_list: list with 1-D numpy arrays of floats
         parameter values from the model
-        standard deviations of each parameter
 
         NOTE:
         order in which lists of data, params_list and params_errors_list are constructed should be the same, i.e.
@@ -320,8 +335,7 @@ def plot_polyfit(data, best_fit_list):
     """
 
     # range of depth locations
-    x = data['Depths'].values
-    x.sort()
+    x = np.linspace(800,2500)
 
 
     for year in range(len(data)):
@@ -343,14 +357,14 @@ def get_timetable(data, best_fit_list, best_fit_errors_list):
     ----------
     data : list with names for pandas DataFrame
         list of names of data and metadata contained in pandas DataFrame
-    params_list, param_errors_list: list with 1-D numpy arrays of floats
+    best_fit_list, best_fit_errors_list: list with 1-D numpy arrays of floats
         parameter values from the model
         standard deviations of each parameter
 
         NOTE:
         order in which lists of data, params_list and params_errors_list are constructed should be the same, i.e.
         data = [data_2002, data_2007]
-        params_list = [params_2002, params_2007]
+        best_fit_list = [params_2002, params_2007]
 
     Returns
     -------
@@ -363,7 +377,7 @@ def get_timetable(data, best_fit_list, best_fit_errors_list):
     if not all(isinstance(entries, pd.DataFrame) for entries in data):
         print("data is not the right type!")
         raise TypeError
-        
+
 
     # define lists used in calculation
     year_list = []
@@ -389,11 +403,10 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
     ----------
     n_M1, n_M2: integer
         describes the highest order (n) of the polynomial from each model
-    data :
-    params_list1 :
-    params_list2 :
-    best_fit1 :
-    best_fit2 :
+    data : list with names for pandas DataFrame
+        list of names of data and metadata contained in pandas DataFrame
+    best_fit1, best_fit2 : list with 1-D numpy arrays of floats
+        parameter values from the model 1 and model 2, respectively
 
     Returns
     -------
@@ -425,8 +438,8 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
         chi_squared1 = np.sum((temp - mu1)**2 / ( temp_error[0] ** 2))
         chi_squared2 = np.sum((temp - mu2)**2 / ( temp_error[0] ** 2))
 
-        max_likelihood1 =  (1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) * np.exp(- chi_squared1/2)
-        max_likelihood2 =  (1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) * np.exp(- chi_squared2/2)
+        max_loglikelihood1 =  np.log(1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) - chi_squared1/2
+        max_loglikelihood2 =  np.log(1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) - chi_squared2/2
 
         curvature1 = np.sqrt(np.linalg.det(best_fit1['covariance matrix'])) * (2 * np.pi) **  (n_M1/2)
         curvature2 = np.sqrt(np.linalg.det(best_fit2['covariance matrix'])) * (2 * np.pi) **  (n_M2/2)
@@ -435,10 +448,10 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
         prior_Cn_M1 = np.prod([1. / (10/800**i - -60/800**i) for i in range(n_M1)])
         prior_Cn_M2 = np.prod([1. / (10/800**i - -60/800**i) for i in range(n_M2)])
 
-        likelihood1 = max_likelihood1 * curvature1 * prior_C0 * prior_Cn_M1
-        likelihood2 = max_likelihood2 * curvature2 * prior_C0 * prior_Cn_M2
+        loglikelihood1 = max_loglikelihood1 * np.log(curvature1) * np.log(prior_C0 * prior_Cn_M1)
+        loglikelihood2 = max_loglikelihood2 * np.log(curvature2) * np.log(prior_C0 * prior_Cn_M2)
 
-        odds_ratio_list.append(likelihood1/likelihood2)
+        odds_ratio_list.append(np.exp(loglikelihood1 - loglikelihood2))
 
     return odds_ratio_list
 
