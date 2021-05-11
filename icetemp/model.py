@@ -60,45 +60,6 @@ def calc_quad_likelihood(data, C_0, C_1, C_2):
     likelihood =  np.prod(1. / np.sqrt(2 * np.pi * temp_error ** 2) * np.exp(-(temp - C_2*depth**2 - C_1 * depth - C_0)**2 / (2 * temp_error ** 2) ) )
     return likelihood
 
-def fit_linear(data):
-    """
-    Fits the data to a quadratic function
-    Only errors on temperature are considered in this model
-    Based on Hogg, Bovy, and Lang section 1 (https://arxiv.org/abs/1008.4686)
-    model: temp = C_2*depth^2 + C_1*depth + C_0
-
-    Parameters
-    ----------
-    data : pandas DataFrame
-        data and metadata contained in pandas DataFrame
-        Format described in tutorial notebook
-
-    Returns
-    -------
-    params, param_errors: 1-D numpy arrays of floats
-        parameter values from the model
-        standard deviations of each parameter
-    """
-
-    # prepare data
-    depth = data['Depth'].values
-    temp = data['Temperature'].values
-    sigma_y = data['temp_errors'].values
-
-    # define quantities from HBL equation 2, 3, and 4
-    Y = temp
-    A = depth[:, np.newaxis] ** (0, 1)
-    C = np.diag(sigma_y ** 2)
-
-    C_inv = np.linalg.inv(C)
-    cov_mat = np.linalg.inv(A.T @ C_inv @ A)
-    params = cov_mat @ (A.T @ C_inv @ Y)
-
-    #get stdev of parameters from covariance matrix
-    param_errors = np.sqrt(np.diag(cov_mat))
-    return params, cov_mat
-
-
 def fit_quad(data):
     """
     Fits the data to a quadratic function
