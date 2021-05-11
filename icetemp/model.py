@@ -200,9 +200,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
         y_obs = pm.Normal("temp_pred", mu = line, sd = sigma_y, observed=temp)
 
     # if a test, do not sample, just return
-    if nosetest:
-        return 
-    else:
+    if not nosetest:
         with quad:
             # unleash the inference
             traces = pm.sample(start=init_guess, tune=n_tuning_steps, draws=n_draws, chains=n_chains) # need at least two chains to use following arviz function
@@ -210,7 +208,7 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
             if n_chains >= 2:
                 az.plot_trace(traces)
 
-    return traces
+    return traces if not nosetest else None
 
 
 def n_polyfit_MCMC(n, data, init_guess):
