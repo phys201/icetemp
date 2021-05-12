@@ -343,10 +343,16 @@ def plot_polyfit(data, best_fit_list):
         data = [data_2002, data_2007]
         params_list = [params_2002, params_2007]
     """
+    # check for correct datatypes
+    if not all(isinstance(entry, pd.DataFrame) for entry in data):
+        print('data is not the correc type')
+        raise TypeError
+    if not all(isinstance(entry, np.ndarray) for entry in best_fit_list):
+        print('best_fit_list must be list of np.ndarrays')
+        raise TypeError
 
     # range of depth locations
     x = np.linspace(800,2500)
-
 
     for year in range(len(data)):
         print("Paremters from MCMC for the year {}".format(data[year]['data_year'][0]))
@@ -384,7 +390,7 @@ def get_timetable(data, best_fit_list, best_fit_errors_list):
 
     """
     # error checking
-    if not all(isinstance(entries, pd.DataFrame) for entries in data):
+    if not all(isinstance(entry, pd.DataFrame) for entry in data):
         print("data is not the right type!")
         raise TypeError
 
@@ -427,14 +433,13 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
     if not all(isinstance(n, int) for n in [n_M1, n_M2]):
         print('n_M1 and n_M2 must be integers!')
         raise TypeError
-    if not all(isinstance(entries, pd.DataFrame) for entries in data):
+    if not all(isinstance(entry, pd.DataFrame) for entry in data):
         print('data is not the right type!')
         raise TypeError
     if not all(isinstance(fit, np.ndarray) for fit in [best_fit1, best_fit2]):
         print('fits must be numpy arrays!')
         raise TypeError
     
-
     odds_ratio_list = []
 
     for year in range(len(data)):

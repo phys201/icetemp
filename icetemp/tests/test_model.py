@@ -103,8 +103,16 @@ class TestModel(TestCase):
 
     def test_get_odds_ratio(self):
         '''
-        Tests to make sure correct exceptions are raised with incorrect dtypes
+        Tests to make sure correct exceptions are raised with incorrect dtypes for get_odds_ratio
         '''
         n_M1, n_M2, data, best_fit1, best_fit2 = [], [], [], [], []
         self.assertRaises(TypeError, mod.get_odds_ratio, n_M1, n_M2, data, best_fit1, best_fit2)
+
+    def test_plot_ployfit(self):
+        '''
+        Tests to make sure correct exceptions are thrown with incorrect dtypes for plot_polyfit
+        '''
+        data = 0
+        best_fit_list = [np.array([1])]
+        self.assertRaises(TypeError, mod.plot_polyfit, data, best_fit_list)
 
