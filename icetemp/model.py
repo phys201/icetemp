@@ -233,8 +233,9 @@ def n_polyfit_MCMC(n, data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n
 
     Returns
     -------
-    traces : pymc3 MultiTrace object
+    traces : pymc3 MultiTrace object, OR int (depending on compute_traces)
         Traces generated from MCMC sampling
+        0 if compute_traces == False
     best_fit : dict
         dictionary containing best-fit parameters and covariance matrix
 
@@ -405,8 +406,7 @@ def get_timetable(data, best_fit_list, best_fit_errors_list):
     Returns
     -------
     timetable: pandas DataFrame
-        data and metadata contained in pandas DataFrame
-        Format described in tutotial notebook
+        Inferred ground level temps and errors over multiple years contained in pandas DataFrame
 
     """
     # error checking
@@ -439,7 +439,7 @@ def get_timetable(data, best_fit_list, best_fit_errors_list):
 def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
     """
     Computes the odds ratio between two models given the data, degrees of polynomial fits,
-    best-fit parameters, and covariance matrices
+    best-fit parameters, and covariance matrices. The log likelihoods/Laplacian estimate are used to calculate the odds ratio.
 
     Parameters
     ----------
@@ -487,11 +487,6 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
 
         chi_squared1 = np.sum((temp - mu1)**2 / ( temp_error[0] ** 2))
         chi_squared2 = np.sum((temp - mu2)**2 / ( temp_error[0] ** 2))
-
-        max_likelihood1 = 1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2) * np.exp(-chi_squared1/2)
-        max_likelihood2 = 1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2) * np.exp(-chi_squared2/2)
-        print("Likelihood 1: ", max_likelihood1)
-        print("Likelihood 2: ", max_likelihood2)
 
         max_loglikelihood1 =  np.log(1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) - chi_squared1/2
         max_loglikelihood2 =  np.log(1. / (2 * np.pi * temp_error[0] ** 2)** (len(data[year])/2)) - chi_squared2/2
