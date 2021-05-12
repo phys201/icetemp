@@ -38,7 +38,7 @@ class TestModel(TestCase):
         Give get_timetable() invalid input and make sure exception is thrown
         '''
         # define data to be wrong type
-        data = []  # list of wrong type (ints instead of pandas dataframe)
+        data = 0  # list of wrong type (ints instead of pandas dataframe)
         params_list = []
         params_errors_list = []
 
@@ -51,11 +51,13 @@ class TestModel(TestCase):
         Computes and tests result of linear likelihood fit of the random test data
         '''
         self.assertTrue(np.abs(mod.calc_linear_likelihood(line_llh_test_df, b, m) - 1) < 1e-6)
+
     def test_quadratic_likelihood(self):
         '''
         Computes and tests result of quadratic likelihood fit of the test data
         '''
         self.assertTrue(np.abs(mod.calc_quad_likelihood(quad_llh_test_df, b, m, q) - 1) < 1e-6)
+
     def test_quadratic_algebraic_fit(self): 
         '''
         Tests algebraic quadratic regression result on dummy data
@@ -64,6 +66,7 @@ class TestModel(TestCase):
         self.assertTrue(np.abs(params[0] - b) < 1e-3)
         self.assertTrue(np.abs(params[1] - m) < 1e-3)
         self.assertTrue(np.abs(params[2] - q) < 1e-3)
+
     def test_quadratic_MCMC_fit(self):
         '''
         Tests whether or not the pymc3 model in fit_quad_MCMC compiles 
@@ -75,6 +78,7 @@ class TestModel(TestCase):
             _ = mod.fit_quad_MCMC(quad_fit_test_df, init_guess, nosetest=True)
         except:
             self.fail("fit_quad_MCMC() raised ExceptionType unexpectedly!")
+
     def test_n_polyfit_MCMC(self):
         '''
         Tests whether or not the pymc3 model in n_polyfit_MCMC compiles for polynomials of degree 1 through 10
@@ -97,4 +101,10 @@ class TestModel(TestCase):
         except:
             self.fail("fit_GPR() raised ExceptionType unexpectedly!")
 
+    def test_get_odds_ratio(self):
+        '''
+        Tests to make sure correct exceptions are raised with incorrect dtypes
+        '''
+        n_M1, n_M2, data, best_fit1, best_fit2 = [], [], [], [], []
+        self.assertRaises(TypeError, mod.get_odds_ratio, n_M1, n_M2, data, best_fit1, best_fit2)
 

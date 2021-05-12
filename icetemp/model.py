@@ -423,6 +423,18 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
     odds_ratio: float
         Odds ratio in Bayesian model comparison
     """
+    # check for proper datatypes
+    if not all(isinstance(n, int) for n in [n_M1, n_M2]):
+        print('n_M1 and n_M2 must be integers!')
+        raise TypeError
+    if not all(isinstance(entries, pd.DataFrame) for entries in data):
+        print('data is not the right type!')
+        raise TypeError
+    if not all(isinstance(fit, np.ndarray) for fit in [best_fit1, best_fit2]):
+        print('fits must be numpy arrays!')
+        raise TypeError
+    
+
     odds_ratio_list = []
 
     for year in range(len(data)):
@@ -468,7 +480,6 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
 
         odds_ratio_list.append(np.exp(loglikelihood1 - loglikelihood2))
         
-
     return odds_ratio_list
 
 
