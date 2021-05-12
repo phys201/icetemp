@@ -115,6 +115,7 @@ class TestModel(TestCase):
     def test_get_odds_ratio(self):
         '''
         Tests to make sure correct exceptions are raised with incorrect dtypes for get_odds_ratio
+        Test edge cases to make sure odds ratio returns 1 for two identical fits
         '''
         n_M1, n_M2, data, best_fit1, best_fit2 = [], [], [], [], []
         self.assertRaises(TypeError, mod.get_odds_ratio, n_M1, n_M2, data, best_fit1, best_fit2)

@@ -447,7 +447,7 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
         describes the highest order (n) of the polynomial from each model
     data : list with names for pandas DataFrame
         list of names of data and metadata contained in pandas DataFrame
-    best_fit1, best_fit2 : list with 1-D numpy arrays of floats
+    best_fit1, best_fit2 : list of 1-D arrays of floats
         parameter values from the model 1 and model 2, respectively
 
     Returns
@@ -461,9 +461,6 @@ def get_odds_ratio(n_M1, n_M2, data, best_fit1, best_fit2):
         raise TypeError
     if not all(isinstance(entry, pd.DataFrame) for entry in data):
         print('data is not the right type!')
-        raise TypeError
-    if not all(isinstance(fit, np.ndarray) for fit in [best_fit1, best_fit2]):
-        print('fits must be numpy arrays!')
         raise TypeError
     
     odds_ratio_list = []
