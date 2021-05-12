@@ -26,6 +26,11 @@ def calc_linear_likelihood(data, C_0, C_1):
         The likelihood for a linear model given the data and specified parameters
     """
 
+    # error checking
+    if not isinstance(data, pd.DataFrame):
+        print("data is not the right type! Should be pandas DataFrame")
+        raise TypeError 
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
@@ -53,6 +58,11 @@ def calc_quad_likelihood(data, C_0, C_1, C_2):
         The likelihood for a quadratic model given the data and specified parameters
     """
 
+    # error checking
+    if not isinstance(data, pd.DataFrame):
+        print("data is not the right type!")
+        raise TypeError 
+
     # prepare data
     depth = data['Depth'].values
     temp = data['Temperature'].values
@@ -79,6 +89,11 @@ def fit_quad(data):
         parameter values from the model
         standard deviations of each parameter
     """
+
+    # error checking
+    if not isinstance(data, pd.DataFrame):
+        print("data is not the right type!")
+        raise TypeError
 
     # prepare data
     depth = data['Depth'].values
@@ -137,6 +152,11 @@ def fit_quad_MCMC(data, init_guess, n_tuning_steps = 1500, n_draws = 2500, n_cha
     NOTE: when testing, None is returned, as no sampling/inference is performed
 
     """
+    # error checking
+    if not isinstance(data, pd.DataFrame):
+        print("data is not the right type!")
+        raise TypeError 
+
     # error checking for MCMC-related parameters
     # if parameters outside allowed values, set them to the default
     if n_tuning_steps < 0:

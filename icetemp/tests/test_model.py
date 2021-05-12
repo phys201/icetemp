@@ -38,39 +38,47 @@ class TestModel(TestCase):
         Give get_timetable() invalid input and make sure exception is thrown
         '''
         # define data to be wrong type
-        data = 0  # list of wrong type (ints instead of pandas dataframe)
+        data = [5, 10]  # list of wrong type (ints instead of pandas dataframe)
         params_list = []
         params_errors_list = []
 
         self.assertRaises(TypeError, mod.get_timetable, data, params_list, params_errors_list)
-        # now make params_list wrong type (list of strings)
 
     # testing non-helper functions
     def test_linear_likelihood(self):
         '''
         Computes and tests result of linear likelihood fit of the random test data
+        Tests if exception is thrown when given invalid data input 
         '''
+        data = "not_data"
         self.assertTrue(np.abs(mod.calc_linear_likelihood(line_llh_test_df, b, m) - 1) < 1e-6)
-
+        self.assertRaises(TypeError, mod.calc_linear_likelihood, data, b, m)
     def test_quadratic_likelihood(self):
         '''
         Computes and tests result of quadratic likelihood fit of the test data
+        Tests if exception is thrown when given invalid data input
         '''
+        data = [5, 10, 15, 20]
         self.assertTrue(np.abs(mod.calc_quad_likelihood(quad_llh_test_df, b, m, q) - 1) < 1e-6)
+        self.assertRaises(TypeError, mod.calc_quad_likelihood, data, b, m, q)  
 
     def test_quadratic_algebraic_fit(self): 
         '''
         Tests algebraic quadratic regression result on dummy data
+        Tests if exception is thrown when given invalid data input
         '''
         params, _ = mod.fit_quad(quad_fit_test_df)
         self.assertTrue(np.abs(params[0] - b) < 1e-3)
         self.assertTrue(np.abs(params[1] - m) < 1e-3)
         self.assertTrue(np.abs(params[2] - q) < 1e-3)
+        data = 5576567.88
+        self.assertRaises(TypeError, mod.fit_quad, data)
 
     def test_quadratic_MCMC_fit(self):
         '''
         Tests whether or not the pymc3 model in fit_quad_MCMC compiles 
         Does not perform inference/sampling in order to save time on tests 
+        Tests if exception is thrown when given invalid data input 
         '''
         #dictionary of guesses
         init_guess = {'C_0':1.0,'C_1':0.0,'C_2':3.0} 
@@ -78,6 +86,8 @@ class TestModel(TestCase):
             _ = mod.fit_quad_MCMC(quad_fit_test_df, init_guess, nosetest=True)
         except:
             self.fail("fit_quad_MCMC() raised ExceptionType unexpectedly!")
+        data = 110101
+        self.assertRaises(TypeError, mod.fit_quad_MCMC, data, init_guess, nosetest=True)  
 
     def test_n_polyfit_MCMC(self):
         '''
