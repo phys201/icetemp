@@ -39,10 +39,11 @@ class TestModel(TestCase):
         '''
         # define data to be wrong type
         data = [5, 10]  # list of wrong type (ints instead of pandas dataframe)
-        params_list = []
-        params_errors_list = []
+        params_list = ["test"]
+        params_errors_list = ["test"]
 
         self.assertRaises(TypeError, mod.get_timetable, data, params_list, params_errors_list)
+        self.assertRaises(TypeError, mod.get_timetable,  quad_fit_test_df, params_list, params_errors_list)
 
     # testing non-helper functions
     def test_linear_likelihood(self):

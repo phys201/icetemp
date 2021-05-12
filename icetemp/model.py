@@ -413,6 +413,12 @@ def get_timetable(data, best_fit_list, best_fit_errors_list):
     if not all(isinstance(entry, pd.DataFrame) for entry in data):
         print("data is not the right type!")
         raise TypeError
+    if not all(isinstance(entry, np.ndarray) for entry in best_fit_list):
+        print("best_fit_list is not a list of arrays!")
+        raise TypeError
+    if not all(isinstance(entry, np.ndarray) for entry in best_fit_errors_list):
+        print("best_fit_errors_list is not a list of arrays!")
+        raise TypeError
 
 
     # define lists used in calculation
